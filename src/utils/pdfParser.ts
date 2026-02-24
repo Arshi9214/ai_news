@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker - using correct version
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
 
 export interface PDFParseResult {
   text: string;
@@ -20,14 +20,34 @@ export interface PDFParseResult {
  */
 export async function extractTextFromPDF(file: File): Promise<PDFParseResult> {
   try {
+    // Validate file type
+    if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+      throw new Error('Invalid file type. Please upload a PDF file.');
+    }
+
     // Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     
+    // Validate ArrayBuffer
+    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+      throw new Error('File is empty or corrupted.');
+    }
+    
     // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: arrayBuffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true
+    });
     const pdf = await loadingTask.promise;
     
     const pageCount = pdf.numPages;
+    
+    if (pageCount === 0) {
+      throw new Error('PDF has no pages.');
+    }
+    
     let fullText = '';
     
     // Extract text from each page
@@ -63,9 +83,18 @@ export async function extractTextFromPDF(file: File): Promise<PDFParseResult> {
         creationDate: info?.CreationDate ? new Date(info.CreationDate) : undefined,
       }
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error parsing PDF:', error);
-    throw new Error('Failed to parse PDF file. Please ensure the file is a valid PDF.');
+    
+    // Provide more specific error messages
+    if (error.message?.includes('Invalid PDF')) {
+      throw new Error('Invalid PDF structure. The file may be corrupted.');
+    }
+    if (error.message?.includes('password')) {
+      throw new Error('PDF is password protected. Please unlock it first.');
+    }
+    
+    throw new Error(error.message || 'Failed to parse PDF file. Please ensure the file is a valid PDF.');
   }
 }
 

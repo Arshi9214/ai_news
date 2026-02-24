@@ -193,6 +193,8 @@ export function PDFProcessor({
   const t = TRANSLATIONS[language];
   const [processing, setProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [pastedText, setPastedText] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -220,6 +222,46 @@ export function PDFProcessor({
     if (e.target.files && e.target.files[0]) {
       handleFiles(Array.from(e.target.files));
     }
+  };
+
+  const handleTextAnalysis = async () => {
+    if (!pastedText.trim()) {
+      toast.error('Please paste some text to analyze.');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      toast.info('Analyzing pasted text...');
+      
+      // Generate short title from first 50 chars
+      const shortTitle = pastedText.trim().substring(0, 50).replace(/\s+/g, ' ') + (pastedText.length > 50 ? '...' : '');
+      
+      const analysis = await analyzeContentWithAI({
+        content: pastedText,
+        depth: analysisDepth,
+        language,
+        context: 'text'
+      });
+      
+      const pdf: ProcessedPDF = {
+        id: Math.random().toString(36).substr(2, 9) + Date.now(),
+        name: shortTitle,
+        content: pastedText,
+        uploadDate: new Date(),
+        pageCount: 1,
+        analysis
+      };
+      
+      onPDFProcessed(pdf);
+      toast.success('Successfully analyzed text!');
+      setPastedText('');
+      setShowTextInput(false);
+    } catch (error: any) {
+      console.error('Error analyzing text:', error);
+      toast.error(`Failed to analyze text: ${error.message}`);
+    }
+    setProcessing(false);
   };
 
   const handleFiles = async (files: File[]) => {
@@ -288,7 +330,57 @@ export function PDFProcessor({
       </div>
 
       {/* Upload Area */}
-      <div
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setShowTextInput(false)}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            !showTextInput
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+          }`}
+        >
+          Upload PDF
+        </button>
+        <button
+          onClick={() => setShowTextInput(true)}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            showTextInput
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+          }`}
+        >
+          Paste Text
+        </button>
+      </div>
+
+      {showTextInput ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 p-6">
+          <textarea
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
+            placeholder="Paste your news article or text here..."
+            className="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={processing}
+          />
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={handleTextAnalysis}
+              disabled={processing || !pastedText.trim()}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
+            >
+              {processing ? 'Analyzing...' : 'Analyze Text'}
+            </button>
+            <button
+              onClick={() => setPastedText('')}
+              disabled={processing}
+              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -332,6 +424,7 @@ export function PDFProcessor({
           )}
         </div>
       </div>
+      )}
 
       {/* Processed PDFs List */}
       <div>
