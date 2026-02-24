@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { X, ArrowRight, ArrowLeft, Sparkles, BookOpen, FileText, Globe, Download, HelpCircle } from 'lucide-react';
-import { Language } from '../App';
+import { Language, ThemeMode } from '../App';
 
 interface OnboardingProps {
   language: Language;
   onComplete: () => void;
+  themeMode?: ThemeMode;
 }
 
 interface OnboardingStep {
@@ -98,7 +99,7 @@ const TRANSLATIONS = {
   }
 };
 
-export function Onboarding({ language, onComplete }: OnboardingProps) {
+export function Onboarding({ language, onComplete, themeMode }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -159,12 +160,20 @@ export function Onboarding({ language, onComplete }: OnboardingProps) {
     return (
       <button
         onClick={handleRestartTour}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all hover:scale-110 group"
+        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg transition-all hover:scale-110 group ${
+          themeMode === 'newspaper'
+            ? 'bg-[#8b7355] hover:bg-[#6b5744] text-[#f9f3e8]'
+            : 'bg-blue-600 hover:bg-blue-700 text-white'
+        }`}
         aria-label={t.helpButton}
         title={t.helpButton}
       >
         <HelpCircle className="h-6 w-6" />
-        <span className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+        <span className={`absolute bottom-full right-0 mb-2 px-3 py-1 text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none ${
+          themeMode === 'newspaper'
+            ? 'bg-[#3d2817] text-[#f9f3e8]'
+            : 'bg-gray-900 text-white'
+        }`}>
           {t.helpButton}
         </span>
       </button>
@@ -186,7 +195,11 @@ export function Onboarding({ language, onComplete }: OnboardingProps) {
 
       {/* Onboarding Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full pointer-events-auto animate-in zoom-in-95 fade-in duration-300 border-2 border-blue-500 dark:border-blue-400">
+        <div className={`rounded-2xl shadow-2xl max-w-lg w-full pointer-events-auto animate-in zoom-in-95 fade-in duration-300 border-2 ${
+          themeMode === 'newspaper'
+            ? 'bg-[#f9f3e8] border-[#8b7355]'
+            : 'bg-white dark:bg-gray-800 border-blue-500 dark:border-blue-400'
+        }`}>
           {/* Header */}
           <div className="relative p-6 pb-4">
             <button
@@ -198,17 +211,27 @@ export function Onboarding({ language, onComplete }: OnboardingProps) {
             </button>
             
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-                <Icon className="h-7 w-7 text-white" />
+              <div className={`p-3 rounded-xl ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#8b7355]'
+                  : 'bg-gradient-to-br from-blue-500 to-purple-600'
+              }`}>
+                <Icon className={`h-7 w-7 ${
+                  themeMode === 'newspaper' ? 'text-[#f9f3e8]' : 'text-white'
+                }`} />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h3 className={`text-xl font-bold ${
+                  themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+                }`}>
                   {title}
                 </h3>
               </div>
             </div>
             
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className={`leading-relaxed ${
+              themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-gray-700 dark:text-gray-300'
+            }`}>
               {description}
             </p>
           </div>
@@ -221,10 +244,10 @@ export function Onboarding({ language, onComplete }: OnboardingProps) {
                   key={index}
                   className={`h-2 rounded-full transition-all duration-300 ${
                     index === currentStep
-                      ? 'w-8 bg-blue-600 dark:bg-blue-500'
+                      ? themeMode === 'newspaper' ? 'w-8 bg-[#8b7355]' : 'w-8 bg-blue-600 dark:bg-blue-500'
                       : index < currentStep
                       ? 'w-2 bg-green-500'
-                      : 'w-2 bg-gray-300 dark:bg-gray-600'
+                      : themeMode === 'newspaper' ? 'w-2 bg-[#ddd0ba]' : 'w-2 bg-gray-300 dark:bg-gray-600'
                   }`}
                 />
               ))}
@@ -255,7 +278,11 @@ export function Onboarding({ language, onComplete }: OnboardingProps) {
             
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all hover:scale-105 shadow-lg"
+              className={`flex items-center gap-2 px-6 py-3 font-semibold rounded-lg transition-all hover:scale-105 shadow-lg ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#8b7355] hover:bg-[#6b5744] text-[#f9f3e8]'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+              }`}
             >
               {isLastStep ? t.finish : t.next}
               {!isLastStep && <ArrowRight className="h-4 w-4" />}

@@ -1,9 +1,11 @@
 import { NewsArticle, Topic, Language } from '../App';
 import { generateLightweightSummary } from './groqApi';
+import { fetchRSSNews, generateRSSSummary } from './rssApi';
 
 /**
  * Multi-source News API Integration with Fallback
  * Priority for India news:
+ * - RSS Feeds (unlimited, real-time, no delay) → Primary for 24h
  * - Last 24h & Last week: NewsData.io (200 credits/day, 12h delay) → GNews → WorldNews
  * - Last month: GNews (100 req/day, 30-day history) → NewsData.io → WorldNews
  */
@@ -54,13 +56,39 @@ export async function fetchNewsWithFallback(
   topics: Topic[],
   dateRange: { from: Date; to: Date },
   language: Language,
-  onProgress?: (status: string, source: NewsSource) => void
+  onProgress?: (status: string, source: NewsSource | 'rss') => void
 ): Promise<NewsArticle[]> {
-  // Determine optimal source order based on date range
-  const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
-  const sources: NewsSource[] = daysDiff <= 7 
-    ? ['newsdata', 'gnews', 'worldnews']  // Recent: NewsData.io first (200 credits/day)
-    : ['gnews', 'newsdata', 'worldnews']; // Month: GNews first (30-day history)
+  // For ≤7 days, try RSS first (unlimited, real-time)
+  const daysDiff = (dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24);
+  console.log(`📅 Date range difference: ${daysDiff.toFixed(2)} days`);
+  
+  if (daysDiff <= 7.5) {
+    try {
+      console.log('🔄 Attempting RSS FEEDS (unlimited, real-time)');
+      onProgress?.('Fetching from RSS feeds...', 'rss');
+      
+      const rssArticles = await fetchRSSNews(topics, language, dateRange);
+      console.log(`📰 RSS returned ${rssArticles.length} articles`);
+      
+      if (rssArticles.length > 0) {
+        console.log(`✅ SUCCESS: RSS returned ${rssArticles.length} articles`);
+        onProgress?.(`Success! Loaded ${rssArticles.length} articles from RSS`, 'rss');
+        return rssArticles;
+      } else {
+        console.log('⚠️ RSS returned 0 articles, falling back to APIs');
+      }
+    } catch (error: any) {
+      console.error('❌ RSS FAILED:', error.message, error);
+      onProgress?.('RSS failed, trying API sources...', 'rss');
+    }
+  } else {
+    console.log(`⏭️ Skipping RSS (${daysDiff.toFixed(2)} days > 7.5 day threshold)`);
+  }
+  
+  // Fallback to API sources
+  const sources: NewsSource[] = daysDiff > 7 
+    ? ['gnews', 'newsdata', 'worldnews']
+    : ['newsdata', 'gnews', 'worldnews'];
   
   for (const source of sources) {
     try {
@@ -252,6 +280,11 @@ export async function generateArticleSummary(
   onUpdate?: (updatedArticle: NewsArticle) => void
 ): Promise<NewsArticle> {
   try {
+    // Use RSS summary generator if it's an RSS article
+    if (article.id.startsWith('rss-')) {
+      return await generateRSSSummary(article, language);
+    }
+    
     const summaryResult = await generateLightweightSummary(
       article.title,
       article.content,
@@ -322,10 +355,7 @@ function convertNewsDataArticle(article: any, topics: Topic[], language: Languag
  * Convert GNews article
  */
 function convertGNewsArticle(article: any, topics: Topic[], language: Language): NewsArticle {
-  // Create unique ID from article URL or title + timestamp
-  const uniqueId = article.url 
-    ? `gnews-${article.url.split('/').pop()}-${Date.now()}`
-    : `gnews-${article.title?.substring(0, 20).replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const uniqueId = `gnews-${article.url?.split('/').pop() || article.title?.substring(0, 20).replace(/\s+/g, '-') || 'article'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   return {
     id: uniqueId,
@@ -390,22 +420,22 @@ export function getDateRange(
   customDates?: { from: Date; to: Date }
 ): { from: Date; to: Date } {
   const now = new Date();
-  console.log('Current date:', now.toISOString());
-  
-  const to = new Date(now);
-  to.setHours(23, 59, 59, 999);
   
   let from: Date;
+  let to: Date;
   
   switch (preset) {
     case '24h':
+      to = new Date(now);
       from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case 'week':
+      to = new Date(now);
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      from.setHours(0, 0, 0, 0);
       break;
     case 'month':
+      to = new Date(now);
+      to.setHours(23, 59, 59, 999);
       from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       from.setHours(0, 0, 0, 0);
       break;
@@ -416,14 +446,17 @@ export function getDateRange(
           to: customDates.to > now ? now : customDates.to
         };
       }
+      to = new Date(now);
+      to.setHours(23, 59, 59, 999);
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       from.setHours(0, 0, 0, 0);
       break;
     default:
+      to = new Date(now);
+      to.setHours(23, 59, 59, 999);
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       from.setHours(0, 0, 0, 0);
   }
   
-  console.log('Date range:', { from: from.toISOString(), to: to.toISOString() });
   return { from, to };
 }

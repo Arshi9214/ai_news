@@ -1,5 +1,5 @@
 import { LayoutDashboard, Newspaper, FileText, BarChart3, Filter } from 'lucide-react';
-import { ViewMode, Topic, AnalysisDepth, Language } from '../App';
+import { ViewMode, Topic, AnalysisDepth, Language, ThemeMode } from '../App';
 
 interface SidebarProps {
   viewMode: ViewMode;
@@ -9,6 +9,7 @@ interface SidebarProps {
   analysisDepth: AnalysisDepth;
   setAnalysisDepth: (depth: AnalysisDepth) => void;
   language: Language;
+  themeMode?: ThemeMode;
 }
 
 const TOPICS: { value: Topic; label: Record<Language, string>; icon: string }[] = [
@@ -143,7 +144,8 @@ export function Sidebar({
   setSelectedTopics,
   analysisDepth,
   setAnalysisDepth,
-  language
+  language,
+  themeMode
 }: SidebarProps) {
   const t = TRANSLATIONS[language];
 
@@ -161,16 +163,28 @@ export function Sidebar({
     }
   };
 
+  const getActiveClass = () => {
+    if (themeMode === 'newspaper') return 'bg-[#c9b896] text-[#3d2817]';
+    return 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400';
+  };
+
+  const getInactiveClass = () => {
+    if (themeMode === 'newspaper') return 'text-[#5a4a3a] hover:bg-[#e8dcc8]';
+    return 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+  };
+
   return (
-    <aside className="hidden lg:block w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4">
+    <aside className={`hidden lg:block w-72 border-r min-h-screen p-4 ${
+      themeMode === 'newspaper'
+        ? 'bg-[#f9f3e8] border-[#8b7355]'
+        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+    }`}>
       {/* Navigation */}
       <nav className="space-y-1 mb-6">
         <button
           onClick={() => setViewMode('dashboard')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-            viewMode === 'dashboard'
-              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            viewMode === 'dashboard' ? getActiveClass() : getInactiveClass()
           }`}
         >
           <LayoutDashboard className="h-5 w-5" />
@@ -180,9 +194,7 @@ export function Sidebar({
         <button
           onClick={() => setViewMode('news')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-            viewMode === 'news'
-              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            viewMode === 'news' ? getActiveClass() : getInactiveClass()
           }`}
         >
           <Newspaper className="h-5 w-5" />
@@ -192,9 +204,7 @@ export function Sidebar({
         <button
           onClick={() => setViewMode('pdf')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-            viewMode === 'pdf'
-              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            viewMode === 'pdf' ? getActiveClass() : getInactiveClass()
           }`}
         >
           <FileText className="h-5 w-5" />
@@ -203,15 +213,23 @@ export function Sidebar({
       </nav>
 
       {/* Filters */}
-      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+      <div className={`border-t pt-4 ${
+        themeMode === 'newspaper' ? 'border-[#8b7355]' : 'border-gray-200 dark:border-gray-700'
+      }`}>
         <div className="flex items-center gap-2 mb-4">
-          <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          <h3 className="font-semibold text-gray-900 dark:text-white">{t.filters}</h3>
+          <Filter className={`h-4 w-4 ${
+            themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-500 dark:text-gray-400'
+          }`} />
+          <h3 className={`font-semibold ${
+            themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+          }`}>{t.filters}</h3>
         </div>
 
         {/* Topics */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={`block text-sm font-medium mb-2 ${
+            themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-gray-700 dark:text-gray-300'
+          }`}>
             {t.topics}
           </label>
           <div className="space-y-1 max-h-64 overflow-y-auto">
@@ -220,9 +238,7 @@ export function Sidebar({
                 key={topic.value}
                 onClick={() => toggleTopic(topic.value)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  selectedTopics.includes(topic.value)
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  selectedTopics.includes(topic.value) ? getActiveClass() : getInactiveClass()
                 }`}
               >
                 <span>{topic.icon}</span>
@@ -234,16 +250,16 @@ export function Sidebar({
 
         {/* Analysis Depth */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className={`block text-sm font-medium mb-2 ${
+            themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-gray-700 dark:text-gray-300'
+          }`}>
             {t.depth}
           </label>
           <div className="space-y-1">
             <button
               onClick={() => setAnalysisDepth('basic')}
               className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
-                analysisDepth === 'basic'
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                analysisDepth === 'basic' ? getActiveClass() : getInactiveClass()
               }`}
             >
               {t.basic}
@@ -251,9 +267,7 @@ export function Sidebar({
             <button
               onClick={() => setAnalysisDepth('advanced')}
               className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
-                analysisDepth === 'advanced'
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                analysisDepth === 'advanced' ? getActiveClass() : getInactiveClass()
               }`}
             >
               {t.advanced}

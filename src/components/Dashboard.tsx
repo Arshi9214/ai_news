@@ -1,5 +1,5 @@
 import { BookMarked, FileText, TrendingUp, Calendar } from 'lucide-react';
-import { NewsArticle, ProcessedPDF, Language } from '../App';
+import { NewsArticle, ProcessedPDF, Language, ThemeMode } from '../App';
 import { NewsCard } from './NewsCard';
 
 interface DashboardProps {
@@ -8,6 +8,7 @@ interface DashboardProps {
   language: Language;
   onViewAnalysis: (item: NewsArticle | ProcessedPDF) => void;
   onToggleBookmark: (id: string) => void;
+  themeMode?: ThemeMode;
 }
 
 const TRANSLATIONS = {
@@ -161,7 +162,8 @@ export function Dashboard({
   processedPDFs,
   language,
   onViewAnalysis,
-  onToggleBookmark
+  onToggleBookmark,
+  themeMode
 }: DashboardProps) {
   const t = TRANSLATIONS[language];
   const bookmarkedArticles = articles.filter(a => a.bookmarked);
@@ -175,48 +177,92 @@ export function Dashboard({
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className={`rounded-lg p-6 border ${
+          themeMode === 'newspaper'
+            ? 'bg-[#f9f3e8] border-[#8b7355]'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t.totalArticles}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{articles.length}</p>
+              <p className={`text-sm ${
+                themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'
+              }`}>{t.totalArticles}</p>
+              <p className={`text-3xl font-bold mt-1 ${
+                themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+              }`}>{articles.length}</p>
             </div>
-            <div className="bg-blue-100 dark:bg-blue-900/20 p-3 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className={`p-3 rounded-lg ${
+              themeMode === 'newspaper' ? 'bg-[#c9b896]' : 'bg-blue-100 dark:bg-blue-900/20'
+            }`}>
+              <TrendingUp className={`h-6 w-6 ${
+                themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-blue-600 dark:text-blue-400'
+              }`} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className={`rounded-lg p-6 border ${
+          themeMode === 'newspaper'
+            ? 'bg-[#f9f3e8] border-[#8b7355]'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t.totalPDFs}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{processedPDFs.length}</p>
+              <p className={`text-sm ${
+                themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'
+              }`}>{t.totalPDFs}</p>
+              <p className={`text-3xl font-bold mt-1 ${
+                themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+              }`}>{processedPDFs.length}</p>
             </div>
-            <div className="bg-purple-100 dark:bg-purple-900/20 p-3 rounded-lg">
-              <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <div className={`p-3 rounded-lg ${
+              themeMode === 'newspaper' ? 'bg-[#c9b896]' : 'bg-purple-100 dark:bg-purple-900/20'
+            }`}>
+              <FileText className={`h-6 w-6 ${
+                themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-purple-600 dark:text-purple-400'
+              }`} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div className={`rounded-lg p-6 border ${
+          themeMode === 'newspaper'
+            ? 'bg-[#f9f3e8] border-[#8b7355]'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t.bookmarks}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{bookmarkedArticles.length}</p>
+              <p className={`text-sm ${
+                themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'
+              }`}>{t.bookmarks}</p>
+              <p className={`text-3xl font-bold mt-1 ${
+                themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+              }`}>{bookmarkedArticles.length}</p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900/20 p-3 rounded-lg">
-              <BookMarked className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className={`p-3 rounded-lg ${
+              themeMode === 'newspaper' ? 'bg-[#c9b896]' : 'bg-green-100 dark:bg-green-900/20'
+            }`}>
+              <BookMarked className={`h-6 w-6 ${
+                themeMode === 'newspaper' ? 'text-[#3d2817]' : 'text-green-600 dark:text-green-400'
+              }`} />
             </div>
           </div>
         </div>
       </div>
 
       {/* Bookmarked Articles */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t.bookmarked}</h3>
+      <div className={`rounded-lg p-6 border ${
+        themeMode === 'newspaper'
+          ? 'bg-[#f9f3e8] border-[#8b7355]'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
+        <h3 className={`text-lg font-semibold mb-4 ${
+          themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
+        }`}>{t.bookmarked}</h3>
         {bookmarkedArticles.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t.noBookmarks}</p>
+          <p className={`text-center py-8 ${
+            themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-500 dark:text-gray-400'
+          }`}>{t.noBookmarks}</p>
         ) : (
           <div className="space-y-3">
             {bookmarkedArticles.slice(0, 5).map(article => (
@@ -234,7 +280,11 @@ export function Dashboard({
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+      <div className={`rounded-lg p-6 border ${
+        themeMode === 'newspaper'
+          ? 'bg-[#f9f3e8] border-[#8b7355]'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t.recent}</h3>
         {recentItems.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t.noRecent}</p>

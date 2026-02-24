@@ -1,6 +1,8 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant newspaper (&:is(.newspaper *));
 
 :root {
   --font-size: 16px;
@@ -57,6 +59,33 @@
   --ring: oklch(0.439 0 0);
 }
 
+.newspaper {
+  --background: #f4e8d0;
+  --foreground: #2c1810;
+  --card: #f9f3e8;
+  --card-foreground: #2c1810;
+  --popover: #f9f3e8;
+  --popover-foreground: #2c1810;
+  --primary: #8b7355;
+  --primary-foreground: #f9f3e8;
+  --secondary: #e8dcc8;
+  --secondary-foreground: #2c1810;
+  --muted: #ddd0ba;
+  --muted-foreground: #5a4a3a;
+  --accent: #c9b896;
+  --accent-foreground: #2c1810;
+  --destructive: #8b4513;
+  --destructive-foreground: #f9f3e8;
+  --border: #8b7355;
+  --input: #f4e8d0;
+  --ring: #8b7355;
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.newspaper h1, .newspaper h2, .newspaper h3 {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
 @layer base {
   * {
     border-color: var(--border);
@@ -66,6 +95,17 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  .newspaper body {
+    font-family: 'Merriweather', Georgia, serif;
+    background: #f4e8d0;
+    background-image: 
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="400" height="400" filter="url(%23noise)" opacity="0.05"/></svg>'),
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(139, 115, 85, 0.03) 2px, rgba(139, 115, 85, 0.03) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(139, 115, 85, 0.03) 2px, rgba(139, 115, 85, 0.03) 4px),
+      linear-gradient(180deg, rgba(139, 115, 85, 0.1) 0%, transparent 20%, transparent 80%, rgba(92, 64, 51, 0.15) 100%);
+    filter: sepia(0.08) brightness(0.97) contrast(1.05);
   }
 }
 

@@ -6,6 +6,7 @@ interface NewsCardProps {
   article: NewsArticle;
   language: Language;
   onToggleBookmark: (id: string) => void;
+  onViewAnalysis: (article: NewsArticle) => void;
   isSummarizing?: boolean;
 }
 
@@ -14,77 +15,89 @@ const TRANSLATIONS = {
     readMore: 'Read More',
     keyTakeaways: 'Key Takeaways',
     bookmark: 'Bookmark',
-    source: 'Source'
+    source: 'Source',
+    viewAnalysis: 'Generate Summary'
   },
   hi: {
     readMore: 'और पढ़ें',
     keyTakeaways: 'मुख्य बातें',
     bookmark: 'बुकमार्क',
-    source: 'स्रोत'
+    source: 'स्रोत',
+    viewAnalysis: 'सारांश बनाएं'
   },
   ta: {
     readMore: 'மேலும் படிக்க',
     keyTakeaways: 'முக்கிய தகவல்கள்',
     bookmark: 'புக்மார்க்',
-    source: 'மூலம்'
+    source: 'மூலம்',
+    viewAnalysis: 'சுருக்கத்தை உருவாக்கு'
   },
   bn: {
     readMore: 'আরও পড়ুন',
     keyTakeaways: 'মূল বিষয়',
     bookmark: 'বুকমার্ক',
-    source: 'উৎস'
+    source: 'উৎস',
+    viewAnalysis: 'সারাংশ তৈরি করুন'
   },
   te: {
     readMore: 'మరింత చదవండి',
     keyTakeaways: 'ముఖ్య విషయాలు',
-    bookmark: 'బుక్‌మార్క్',
-    source: 'మూలం'
+    bookmark: 'బుక్మార్క్',
+    source: 'మూలం',
+    viewAnalysis: 'సారాంశం రూపొందించండి'
   },
   mr: {
     readMore: 'अधिक वाचा',
     keyTakeaways: 'मुख्य मुद्दे',
     bookmark: 'बुकमार्क',
-    source: 'स्रोत'
+    source: 'स्रोत',
+    viewAnalysis: 'सारांश तयार करा'
   },
   gu: {
     readMore: 'વધુ વાંચો',
     keyTakeaways: 'મુખ્ય મુદ્દાઓ',
     bookmark: 'બુકમાર્ક',
-    source: 'સ્ત્રોત'
+    source: 'સ્ત્રોત',
+    viewAnalysis: 'સારાંશ બનાવો'
   },
   kn: {
     readMore: 'ಇನ್ನಷ್ಟು ಓದಿ',
     keyTakeaways: 'ಪ್ರಮುಖ ಅಂಶಗಳು',
-    bookmark: 'ಬುಕ್‌ಮಾರ್ಕ್',
-    source: 'ಮೂಲ'
+    bookmark: 'ಬುಕ್ಮಾರ್ಕ್',
+    source: 'ಮೂಲ',
+    viewAnalysis: 'ಸಾರಾಂಶವನ್ನು ರಚಿಸಿ'
   },
   ml: {
     readMore: 'കൂടുതൽ വായിക്കുക',
     keyTakeaways: 'പ്രധാന വശങ്ങൾ',
     bookmark: 'ബുക്ക്മാർക്ക്',
-    source: 'ഉറവിടം'
+    source: 'ഉറവിടം',
+    viewAnalysis: 'സംഗ്രഹം സൃഷ്ടിക്കുക'
   },
   pa: {
     readMore: 'ਹੋਰ ਪੜ੍ਹੋ',
     keyTakeaways: 'ਮੁੱਖ ਗੱਲਾਂ',
     bookmark: 'ਬੁਕਮਾਰਕ',
-    source: 'ਸਰੋਤ'
+    source: 'ਸਰੋਤ',
+    viewAnalysis: 'ਸੰਖੇਪ ਬਣਾਓ'
   },
   ur: {
     readMore: 'مزید پڑھیں',
     keyTakeaways: 'اہم نکات',
     bookmark: 'بک مارک',
-    source: 'ماخذ'
+    source: 'ماخذ',
+    viewAnalysis: 'خلاصہ بنائیں'
   }
 };
 
-export function NewsCard({ article, language, onToggleBookmark, isSummarizing = false }: NewsCardProps) {
+export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, isSummarizing = false }: NewsCardProps) {
   const t = TRANSLATIONS[language];
   const [showTakeaways, setShowTakeaways] = useState(false);
 
   const hasKeyTakeaways = article.analysis?.keyTakeaways && article.analysis.keyTakeaways.length > 0;
-  const sourceName = article.source?.name || article.source || 
-    (article.url ? new URL(article.url).hostname.replace('www.', '').replace('.com', '') : 'Unknown');
+  const sourceName = typeof article.source === 'string' 
+    ? article.source 
+    : article.source?.name || (article.url ? new URL(article.url).hostname.replace('www.', '').replace('.com', '') : 'Unknown');
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow">
@@ -106,11 +119,11 @@ export function NewsCard({ article, language, onToggleBookmark, isSummarizing = 
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
               {article.title}
             </h3>
             <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              <span className="font-medium">{sourceName}</span>
+              <span className="font-medium">{String(sourceName)}</span>
               <span>•</span>
               <span>{article.date.toLocaleDateString()}</span>
               {article.topics.length > 0 && (
@@ -157,7 +170,7 @@ export function NewsCard({ article, language, onToggleBookmark, isSummarizing = 
             <button
               onClick={() => setShowTakeaways(!showTakeaways)}
               className="w-full flex items-center justify-between px-4 py-2.5 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg transition-colors"
-              style={{ minHeight: '44px' }} // Touch-friendly
+              style={{ minHeight: '44px' }}
             >
               <div className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
@@ -175,7 +188,7 @@ export function NewsCard({ article, language, onToggleBookmark, isSummarizing = 
             {showTakeaways && (
               <div className="mt-2 p-4 bg-green-50/50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 rounded-lg">
                 <ul className="space-y-2">
-                  {article.analysis.keyTakeaways.slice(0, 3).map((takeaway, index) => (
+                  {article.analysis?.keyTakeaways?.slice(0, 3).map((takeaway, index) => (
                     <li key={index} className="flex items-start gap-2 text-sm sm:text-base">
                       <span className="flex-shrink-0 mt-1 h-1.5 w-1.5 rounded-full bg-green-600 dark:bg-green-400" />
                       <span className="text-gray-700 dark:text-gray-300">{takeaway}</span>
@@ -189,12 +202,22 @@ export function NewsCard({ article, language, onToggleBookmark, isSummarizing = 
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={() => onViewAnalysis(article)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium text-black"
+            style={{ minHeight: '44px', backgroundColor: 'rgb(51, 229, 234)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(41, 219, 224)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(51, 229, 234)'}
+          >
+            <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
+            {t.viewAnalysis}
+          </button>
           <a
             href={article.url}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base font-medium"
-            style={{ minHeight: '44px' }} // Touch-friendly
+            style={{ minHeight: '44px' }}
           >
             <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />
             {t.readMore}

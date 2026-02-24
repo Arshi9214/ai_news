@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, FileText, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { ProcessedPDF, AnalysisDepth, Language } from '../App';
+import { ProcessedPDF, AnalysisDepth, Language, ThemeMode } from '../App';
 import { extractTextFromPDF, analyzePDFContent as analyzePDFStructure } from '../utils/pdfParser';
 import { analyzeContentWithAI } from '../utils/aiAnalyzer';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ interface PDFProcessorProps {
   processedPDFs: ProcessedPDF[];
   onViewAnalysis: (pdf: ProcessedPDF) => void;
   onDeletePDF: (id: string) => void;
+  themeMode?: ThemeMode;
 }
 
 const TRANSLATIONS = {
@@ -188,7 +189,8 @@ export function PDFProcessor({
   onPDFProcessed,
   processedPDFs,
   onViewAnalysis,
-  onDeletePDF
+  onDeletePDF,
+  themeMode
 }: PDFProcessorProps) {
   const t = TRANSLATIONS[language];
   const [processing, setProcessing] = useState(false);
@@ -335,8 +337,8 @@ export function PDFProcessor({
           onClick={() => setShowTextInput(false)}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             !showTextInput
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ? themeMode === 'newspaper' ? 'bg-[#8b7355] text-white' : 'bg-blue-600 text-white'
+              : themeMode === 'newspaper' ? 'bg-[#e8dcc8] text-[#5a4a3a]' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
           Upload PDF
@@ -345,8 +347,8 @@ export function PDFProcessor({
           onClick={() => setShowTextInput(true)}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             showTextInput
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              ? themeMode === 'newspaper' ? 'bg-[#8b7355] text-white' : 'bg-blue-600 text-white'
+              : themeMode === 'newspaper' ? 'bg-[#e8dcc8] text-[#5a4a3a]' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
           }`}
         >
           Paste Text
@@ -366,7 +368,11 @@ export function PDFProcessor({
             <button
               onClick={handleTextAnalysis}
               disabled={processing || !pastedText.trim()}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
+              className={`px-6 py-3 rounded-lg transition-colors font-medium text-white ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#8b7355] hover:bg-[#6b5744] disabled:bg-[#b8a785]'
+                  : 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400'
+              }`}
             >
               {processing ? 'Analyzing...' : 'Analyze Text'}
             </button>
@@ -416,7 +422,11 @@ export function PDFProcessor({
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t.supportedFormats}</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className={`px-6 py-3 rounded-lg transition-colors font-medium text-white ${
+                  themeMode === 'newspaper'
+                    ? 'bg-[#8b7355] hover:bg-[#6b5744]'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
                 {t.uploadButton}
               </button>
@@ -464,7 +474,11 @@ export function PDFProcessor({
                     <div className="flex items-center gap-2 mt-4">
                       <button
                         onClick={() => onViewAnalysis(pdf)}
-                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                        className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium text-white ${
+                          themeMode === 'newspaper'
+                            ? 'bg-[#8b7355] hover:bg-[#6b5744]'
+                            : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                       >
                         {t.viewAnalysis}
                       </button>

@@ -49,6 +49,7 @@ export interface ProcessedPDF {
 }
 
 export type ViewMode = 'dashboard' | 'news' | 'pdf' | 'analysis';
+export type ThemeMode = 'light' | 'dark' | 'newspaper';
 
 function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
@@ -58,7 +59,7 @@ function App() {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [processedPDFs, setProcessedPDFs] = useState<ProcessedPDF[]>([]);
   const [selectedItem, setSelectedItem] = useState<NewsArticle | ProcessedPDF | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
   const toggleBookmark = (articleId: string) => {
     setArticles(prev =>
@@ -71,10 +72,12 @@ function App() {
   };
 
   const addArticles = (newArticles: NewsArticle[] | ((prev: NewsArticle[]) => NewsArticle[])) => {
+    console.log('📥 addArticles called with:', typeof newArticles === 'function' ? 'function' : `${newArticles.length} articles`);
     if (typeof newArticles === 'function') {
       setArticles(newArticles);
     } else {
-      setArticles(prev => [...newArticles, ...prev]);
+      console.log('✅ Setting articles to:', newArticles.length);
+      setArticles(newArticles);
     }
   };
 
@@ -104,30 +107,37 @@ function App() {
   const bookmarkedArticles = articles.filter(a => a.bookmarked);
 
   return (
-    <div className={darkMode ? 'dark' : ''}>
+    <div className={themeMode === 'dark' ? 'dark' : themeMode === 'newspaper' ? 'newspaper' : ''}>
       {/* Onboarding for first-time users */}
       <Onboarding 
         language={language}
         onComplete={() => console.log('Onboarding completed')}
+        themeMode={themeMode}
       />
 
       {/* Mobile Menu */}
       <MobileMenu 
         language={language}
-        darkMode={darkMode}
-        onToggleDarkMode={() => setDarkMode(!darkMode)}
+        darkMode={themeMode === 'dark'}
+        onToggleDarkMode={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onLanguageChange={setLanguage}
         bookmarkCount={bookmarkedArticles.length}
         onNavigate={handleNavigate}
         currentSection={viewMode}
       />
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className={`min-h-screen transition-colors ${
+        themeMode === 'newspaper' 
+          ? 'bg-[#f4e8d0]' 
+          : 'bg-gray-50 dark:bg-gray-900'
+      }`}>
         <Header
           language={language}
           setLanguage={setLanguage}
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
+          darkMode={themeMode === 'dark'}
+          setDarkMode={(dark) => setThemeMode(dark ? 'dark' : 'light')}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
         />
         
         <div className="flex">
@@ -139,6 +149,7 @@ function App() {
             analysisDepth={analysisDepth}
             setAnalysisDepth={setAnalysisDepth}
             language={language}
+            themeMode={themeMode}
           />
           
           <main className="flex-1 p-6">
@@ -149,6 +160,7 @@ function App() {
                 language={language}
                 onViewAnalysis={viewAnalysis}
                 onToggleBookmark={toggleBookmark}
+                themeMode={themeMode}
               />
             )}
             
@@ -161,6 +173,7 @@ function App() {
                 articles={articles}
                 onToggleBookmark={toggleBookmark}
                 onViewAnalysis={viewAnalysis}
+                themeMode={themeMode}
               />
             )}
             
@@ -172,6 +185,7 @@ function App() {
                 processedPDFs={processedPDFs}
                 onViewAnalysis={viewAnalysis}
                 onDeletePDF={deletePDF}
+                themeMode={themeMode}
               />
             )}
             
@@ -180,6 +194,7 @@ function App() {
                 item={selectedItem}
                 language={language}
                 onBack={() => setViewMode('dashboard')}
+                themeMode={themeMode}
               />
             )}
           </main>

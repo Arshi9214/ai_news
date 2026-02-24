@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
-import { RefreshCw, Search, Download, Loader2, Clock, Plus, FileDown } from 'lucide-react';
-import { NewsArticle, Topic, AnalysisDepth, Language } from '../App';
+import { useState, useCallback, useEffect } from 'react';
+import { RefreshCw, Search, Download, Loader2, Clock, Plus, FileDown, ArrowUp } from 'lucide-react';
+import { NewsArticle, Topic, AnalysisDepth, Language, ThemeMode } from '../App';
 import { NewsCard } from './NewsCard';
 import { fetchNewsWithFallback, getDateRange } from '../utils/multiNewsApi';
 import { generateLightweightSummary } from '../utils/groqApi';
@@ -15,6 +15,7 @@ interface NewsAggregatorProps {
   articles: NewsArticle[];
   onToggleBookmark: (id: string) => void;
   onViewAnalysis: (article: NewsArticle) => void;
+  themeMode?: ThemeMode;
 }
 
 const TRANSLATIONS = {
@@ -196,19 +197,39 @@ export function NewsAggregator({
   onArticlesLoaded,
   articles,
   onToggleBookmark,
-  onViewAnalysis
+  onViewAnalysis,
+  themeMode
 }: NewsAggregatorProps) {
   const t = TRANSLATIONS[language];
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<'24h' | 'week' | 'month' | 'custom'>('week');
+  const [dateRange, setDateRange] = useState<'24h' | 'week' | 'month' | 'custom'>('24h');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [fetchStatus, setFetchStatus] = useState('');
   const [summarizingIds, setSummarizingIds] = useState<Set<string>>(new Set());
   const [summaryProgress, setSummaryProgress] = useState({ current: 0, total: 0 });
+  const [displayCount, setDisplayCount] = useState(50);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY;
+      const articleHeight = 400; // Approximate height per article
+      const articlesScrolled = scrolled / articleHeight;
+      setShowScrollTop(articlesScrolled > 15); // Show after ~30 articles (2 columns)
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const generateArticleSummary = useCallback(async (article: NewsArticle) => {
     try {
@@ -237,6 +258,34 @@ export function NewsAggregator({
     }
   }, [language]);
 
+  const handleViewAnalysis = async (article: NewsArticle) => {
+    // If article doesn't have analysis, generate it first
+    if (!article.analysis) {
+      setSummarizingIds(prev => new Set(prev).add(article.id));
+      toast.info('Generating AI summary...');
+      
+      try {
+        const updatedArticle = await generateArticleSummary(article);
+        onArticlesLoaded((prev: NewsArticle[]) => 
+          prev.map((a: NewsArticle) => a.id === updatedArticle.id ? updatedArticle : a)
+        );
+        setSummarizingIds(prev => {
+          const next = new Set(prev);
+          next.delete(article.id);
+          return next;
+        });
+        toast.success('Summary generated!');
+      } catch (error) {
+        setSummarizingIds(prev => {
+          const next = new Set(prev);
+          next.delete(article.id);
+          return next;
+        });
+        toast.error('Failed to generate summary');
+      }
+    }
+  };
+
   const handleFetchNews = async (isLoadMore = false) => {
     if (isLoadMore) {
       setLoadingMore(true);
@@ -262,53 +311,21 @@ export function NewsAggregator({
         (status) => setFetchStatus(status)
       );
       
+      console.log('📦 Fetched articles:', fetchedArticles.length, fetchedArticles.slice(0, 2));
+      console.log('🔍 isLoadMore:', isLoadMore);
+      
       if (!isLoadMore) {
+        console.log('🔄 Calling onArticlesLoaded with', fetchedArticles.length, 'articles');
         onArticlesLoaded(fetchedArticles);
+        setDisplayCount(50);
         toast.success(`Loaded ${fetchedArticles.length} articles!`);
       } else {
-        const existingIds = new Set(articles.map(a => a.id));
-        const newArticles = fetchedArticles.filter(a => !existingIds.has(a.id));
-        if (newArticles.length > 0) {
-          onArticlesLoaded([...articles, ...newArticles]);
-          toast.success(`Loaded ${newArticles.length} more articles!`);
-        } else {
-          toast.info('No new articles found');
-        }
+        setDisplayCount(prev => prev + 50);
+        toast.success(`Loaded 50 more articles!`);
       }
       
       setLoading(false);
       setLoadingMore(false);
-      
-      // Generate summaries progressively in background
-      const articlesToProcess = isLoadMore 
-        ? fetchedArticles.filter(a => !articles.some(existing => existing.id === a.id))
-        : fetchedArticles;
-      
-      if (articlesToProcess.length > 0) {
-        setSummaryProgress({ current: 0, total: articlesToProcess.length });
-        
-        for (let i = 0; i < articlesToProcess.length; i++) {
-          const article = articlesToProcess[i];
-          setSummarizingIds(prev => new Set(prev).add(article.id));
-          
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const updatedArticle = await generateArticleSummary(article);
-          
-          onArticlesLoaded(prev => 
-            prev.map(a => a.id === updatedArticle.id ? updatedArticle : a)
-          );
-          
-          setSummarizingIds(prev => {
-            const next = new Set(prev);
-            next.delete(article.id);
-            return next;
-          });
-          setSummaryProgress({ current: i + 1, total: articlesToProcess.length });
-        }
-        
-        setSummaryProgress({ current: 0, total: 0 });
-      }
     } catch (error: any) {
       console.error('Error fetching news:', error);
       toast.error(error.message || 'Failed to fetch news.');
@@ -328,7 +345,13 @@ export function NewsAggregator({
       article.topics.some(topic => selectedTopics.includes(topic));
     
     return matchesSearch && matchesTopics;
+  }).sort((a, b) => {
+    return sortOrder === 'newest' 
+      ? b.date.getTime() - a.date.getTime()
+      : a.date.getTime() - b.date.getTime();
   });
+  
+  console.log('📋 Articles in component:', articles.length, 'Filtered:', filteredArticles.length);
 
   const handleExport = () => {
     const data = filteredArticles.map(article => ({
@@ -351,8 +374,10 @@ export function NewsAggregator({
   };
 
   const handleExportToPDF = () => {
-    exportNewsToPDF(filteredArticles, language);
+    exportNewsToPDF(filteredArticles, { language });
   };
+
+  const displayedArticles = filteredArticles.slice(0, displayCount);
 
   return (
     <div className="space-y-6">
@@ -360,20 +385,36 @@ export function NewsAggregator({
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t.subtitle}</p>
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t.sources}</p>
+        {articles.length > 0 && articles[0]?.id.startsWith('rss-') && (
+          <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+            <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+            Real-time RSS headlines ({dateRange === '24h' ? 'last 24 hours' : dateRange === 'week' ? 'last 7 days' : 'last 1-3 days'})
+          </p>
+        )}
       </div>
 
       {/* Controls */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`rounded-lg p-4 border ${
+        themeMode === 'newspaper'
+          ? 'bg-[#f9f3e8] border-[#8b7355]'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
+        <div className={`grid grid-cols-1 gap-4 ${dateRange === '24h' || dateRange === 'week' || dateRange === 'month' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 pointer-events-none ${
+              themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-500 dark:text-gray-400'
+            }`} />
             <input
               type="text"
               placeholder={t.search}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:border-transparent ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#f4e8d0] border-[#8b7355] text-[#2c1810] placeholder-[#5a4a3a] focus:ring-[#8b7355]'
+                  : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-blue-500'
+              }`}
             />
           </div>
 
@@ -399,12 +440,30 @@ export function NewsAggregator({
             </select>
           </div>
 
+          {/* Sort Order - Show for 24h/week/month */}
+          {(dateRange === '24h' || dateRange === 'week' || dateRange === 'month') && (
+            <div>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2">
             <button
-              onClick={handleFetchNews}
+              onClick={() => handleFetchNews()}
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              className={`flex-1 px-4 py-2 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-2 text-white ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#8b7355] hover:bg-[#6b5744] disabled:bg-[#b8a785]'
+                  : 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400'
+              }`}
             >
               {loading ? (
                 <>
@@ -492,46 +551,54 @@ export function NewsAggregator({
       )}
 
       {/* Articles Grid */}
-      {filteredArticles.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-12 border border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-gray-500 dark:text-gray-400">{t.noResults}</p>
+      {displayedArticles.length === 0 ? (
+        <div className={`rounded-lg p-12 border text-center ${
+          themeMode === 'newspaper'
+            ? 'bg-[#f9f3e8] border-[#8b7355] text-[#5a4a3a]'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+        }`}>
+          <p>{t.noResults}</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredArticles.map(article => (
-              <NewsCard
-                key={article.id}
-                article={article}
-                language={language}
-                onToggleBookmark={onToggleBookmark}
-                onViewAnalysis={onViewAnalysis}
-                isSummarizing={summarizingIds.has(article.id)}
-              />
+          <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+            {displayedArticles.map(article => (
+              <div key={article.id} className="break-inside-avoid mb-6">
+                <NewsCard
+                  article={article}
+                  language={language}
+                  onToggleBookmark={onToggleBookmark}
+                  onViewAnalysis={handleViewAnalysis}
+                  isSummarizing={summarizingIds.has(article.id)}
+                />
+              </div>
             ))}
           </div>
 
           {/* View More Articles Button */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={() => handleFetchNews(true)}
-              disabled={loadingMore}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-blue-400 disabled:to-purple-400 text-white rounded-lg transition-all hover:scale-105 shadow-lg font-semibold flex items-center gap-2"
-            >
-              {loadingMore ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {t.loading}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-5 w-5" />
-                  {t.viewMore}
-                </>
-              )}
-            </button>
-          </div>
+          {displayCount < filteredArticles.length && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={() => setDisplayCount(prev => prev + 50)}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all hover:scale-105 shadow-lg font-semibold flex items-center gap-2"
+              >
+                <Plus className="h-5 w-5" />
+                {t.viewMore}
+              </button>
+            </div>
+          )}
         </>
+      )}
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 left-8 p-3 bg-gray-900/50 hover:bg-gray-900/70 text-white rounded-full shadow-lg transition-all backdrop-blur-sm"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-6 w-6" />
+        </button>
       )}
     </div>
   );

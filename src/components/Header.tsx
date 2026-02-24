@@ -1,11 +1,13 @@
-import { Moon, Sun, Globe } from 'lucide-react';
-import { Language } from '../App';
+import { Moon, Sun, Globe, Newspaper } from 'lucide-react';
+import { Language, ThemeMode } from '../App';
 
 interface HeaderProps {
   language: Language;
   setLanguage: (lang: Language) => void;
   darkMode: boolean;
   setDarkMode: (mode: boolean) => void;
+  themeMode?: ThemeMode;
+  setThemeMode?: (mode: ThemeMode) => void;
 }
 
 const LANGUAGES = {
@@ -69,18 +71,30 @@ const TRANSLATIONS = {
   }
 };
 
-export function Header({ language, setLanguage, darkMode, setDarkMode }: HeaderProps) {
+export function Header({ language, setLanguage, darkMode, setDarkMode, themeMode, setThemeMode }: HeaderProps) {
   const t = TRANSLATIONS[language];
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+    <header className={`shadow-sm border-b transition-colors ${
+      themeMode === 'newspaper'
+        ? 'bg-[#f9f3e8] border-[#8b7355]'
+        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+    }`}>
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className={`text-2xl font-bold ${
+              themeMode === 'newspaper'
+                ? 'text-[#2c1810] font-serif'
+                : 'text-gray-900 dark:text-white'
+            }`}>
               {t.title}
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className={`text-sm mt-1 ${
+              themeMode === 'newspaper'
+                ? 'text-[#5a4a3a]'
+                : 'text-gray-600 dark:text-gray-400'
+            }`}>
               {t.subtitle}
             </p>
           </div>
@@ -88,11 +102,17 @@ export function Header({ language, setLanguage, darkMode, setDarkMode }: HeaderP
           <div className="flex items-center gap-4">
             {/* Language Selector */}
             <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
+                themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-500 dark:text-gray-400'
+              }`} />
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as Language)}
-                className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  themeMode === 'newspaper'
+                    ? 'bg-[#f4e8d0] border-[#8b7355] text-[#2c1810]'
+                    : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white'
+                }`}
               >
                 {Object.entries(LANGUAGES).map(([code, name]) => (
                   <option key={code} value={code}>
@@ -102,18 +122,48 @@ export function Header({ language, setLanguage, darkMode, setDarkMode }: HeaderP
               </select>
             </div>
             
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? (
-                <Sun className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <Moon className="h-5 w-5 text-gray-700" />
-              )}
-            </button>
+            {/* Theme Toggle Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setThemeMode?.('light')}
+                className={`p-2 rounded-lg transition-colors ${
+                  themeMode === 'light'
+                    ? 'bg-blue-100 text-blue-600'
+                    : themeMode === 'newspaper'
+                    ? 'bg-[#c9b896] hover:bg-[#b8a785] text-[#3d2817]'
+                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                }`}
+                aria-label="Light mode"
+              >
+                <Sun className="h-5 w-5" />
+              </button>
+              
+              <button
+                onClick={() => setThemeMode?.('dark')}
+                className={`p-2 rounded-lg transition-colors ${
+                  themeMode === 'dark'
+                    ? 'bg-gray-700 text-yellow-500'
+                    : themeMode === 'newspaper'
+                    ? 'bg-[#c9b896] hover:bg-[#b8a785] text-[#3d2817]'
+                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                }`}
+                aria-label="Dark mode"
+              >
+                <Moon className="h-5 w-5" />
+              </button>
+              
+              <button
+                onClick={() => setThemeMode?.('newspaper')}
+                className={`p-2 rounded-lg transition-colors ${
+                  themeMode === 'newspaper'
+                    ? 'bg-[#6b5744] text-[#f9f3e8]'
+                    : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                }`}
+                aria-label="Newspaper mode"
+              >
+                <Newspaper className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

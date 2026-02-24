@@ -16,6 +16,7 @@ interface AnalysisViewerProps {
   item: NewsArticle | ProcessedPDF;
   language: Language;
   onBack: () => void;
+  themeMode?: 'light' | 'dark' | 'newspaper';
 }
 
 const TRANSLATIONS = {
@@ -327,7 +328,7 @@ export function AnalysisViewer({
           {isArticle && (
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
               <span>
-                {t.source}: {item.source}
+                {t.source}: {typeof item.source === 'string' ? item.source : item.source?.name || 'Unknown'}
               </span>
               <span>
                 {t.date}: {item.date.toLocaleDateString()}
