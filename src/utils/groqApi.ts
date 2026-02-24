@@ -89,12 +89,17 @@ export async function generateLightweightSummary(
  */
 async function fetchWithKeyRotation(prompt: string, languagePrompt: string): Promise<string> {
   let attempts = 0;
-  const maxAttempts = GROQ_API_KEYS.length;
+  const maxAttempts = GROQ_API_KEYS.filter(key => key !== 'YOUR_GROQ_API_KEY_1_HERE' && key !== 'YOUR_GROQ_API_KEY_2_HERE' && key !== 'YOUR_GROQ_API_KEY_3_HERE').length;
+
+  if (maxAttempts === 0) {
+    throw new Error('No valid Groq API keys configured');
+  }
 
   while (attempts < maxAttempts) {
     try {
       const apiKey = getCurrentApiKey();
-      console.log(`Using API key ${currentKeyIndex + 1}: ${apiKey.substring(0, 20)}...`);
+      const keyPreview = `...${apiKey.slice(-4)}`;
+      console.log(`🤖 Using GROQ API Key ${currentKeyIndex + 1}/3 (${keyPreview})`);
       
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',

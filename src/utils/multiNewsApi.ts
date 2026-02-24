@@ -3,7 +3,9 @@ import { generateLightweightSummary } from './groqApi';
 
 /**
  * Multi-source News API Integration with Fallback
- * Priority: WorldNewsAPI → NewsData.io → GNews
+ * Priority for India news:
+ * - Last 24h & Last week: NewsData.io (200 credits/day, 12h delay) → GNews → WorldNews
+ * - Last month: GNews (100 req/day, 30-day history) → NewsData.io → WorldNews
  */
 
 // API Keys Configuration
@@ -54,20 +56,30 @@ export async function fetchNewsWithFallback(
   language: Language,
   onProgress?: (status: string, source: NewsSource) => void
 ): Promise<NewsArticle[]> {
-  const sources: NewsSource[] = ['worldnews', 'newsdata', 'gnews'];
+  // Determine optimal source order based on date range
+  const daysDiff = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24));
+  const sources: NewsSource[] = daysDiff <= 7 
+    ? ['newsdata', 'gnews', 'worldnews']  // Recent: NewsData.io first (200 credits/day)
+    : ['gnews', 'newsdata', 'worldnews']; // Month: GNews first (30-day history)
   
   for (const source of sources) {
     try {
+      const apiKeyPreview = source === 'worldnews' ? `...${WORLD_NEWS_API_KEY.slice(-4)}` :
+                           source === 'newsdata' ? `...${NEWSDATA_API_KEY.slice(-4)}` :
+                           `...${GNEWS_API_KEY.slice(-4)}`;
+      
+      console.log(`🔄 Attempting ${source.toUpperCase()} API (Key: ${apiKeyPreview})`);
       onProgress?.(`Trying ${source}...`, source);
       
       const articles = await fetchFromSource(source, topics, dateRange, language);
       
       if (articles.length > 0) {
+        console.log(`✅ SUCCESS: ${source.toUpperCase()} returned ${articles.length} articles`);
         onProgress?.(`Success! Loaded ${articles.length} articles from ${source}`, source);
         return articles;
       }
     } catch (error: any) {
-      console.error(`Failed to fetch from ${source}:`, error);
+      console.error(`❌ ${source.toUpperCase()} FAILED:`, error.message);
       onProgress?.(`${source} failed, trying next source...`, source);
       continue;
     }
@@ -129,7 +141,9 @@ async function fetchFromWorldNews(
   );
 
   if (!response.ok) {
-    throw new Error(`WorldNewsAPI error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('WorldNewsAPI error details:', errorText);
+    throw new Error(`WorldNewsAPI error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -138,7 +152,7 @@ async function fetchFromWorldNews(
 }
 
 /**
- * NewsData.io (Secondary - 200 credits/day, local/Hindi support)
+ * NewsData.io (Primary for recent - 200 credits/day, 12h delay)
  */
 async function fetchFromNewsData(
   topics: Topic[],
@@ -178,7 +192,7 @@ async function fetchFromNewsData(
 }
 
 /**
- * GNews (Fallback - 100 requests/day, 30 days historical)
+ * GNews (Primary for monthly - 100 req/day, 30-day history, 12h delay)
  */
 async function fetchFromGNews(
   topics: Topic[],
@@ -197,7 +211,7 @@ async function fetchFromGNews(
     q: keywords,
     country: 'in',
     lang: langCode,
-    max: '30',
+    max: '10',
     from: dateRange.from.toISOString(),
     to: dateRange.to.toISOString()
   });
@@ -216,7 +230,17 @@ async function fetchFromGNews(
     throw new Error(data.errors[0] || 'GNews request failed');
   }
   
-  return (data.articles || []).map((article: any) => convertGNewsArticle(article, topics, language));
+  // Convert articles
+  const articles = (data.articles || []).map((article: any) => convertGNewsArticle(article, topics, language));
+  
+  // Filter by date range on client side (GNews free tier doesn't respect date params properly)
+  const filtered = articles.filter(article => {
+    const articleDate = article.date.getTime();
+    return articleDate >= dateRange.from.getTime() && articleDate <= dateRange.to.getTime();
+  });
+  
+  console.log(`GNews: Received ${articles.length} articles, filtered to ${filtered.length} within date range`);
+  return filtered;
 }
 
 /**
@@ -298,8 +322,13 @@ function convertNewsDataArticle(article: any, topics: Topic[], language: Languag
  * Convert GNews article
  */
 function convertGNewsArticle(article: any, topics: Topic[], language: Language): NewsArticle {
+  // Create unique ID from article URL or title + timestamp
+  const uniqueId = article.url 
+    ? `gnews-${article.url.split('/').pop()}-${Date.now()}`
+    : `gnews-${article.title?.substring(0, 20).replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
   return {
-    id: generateId(),
+    id: uniqueId,
     title: article.title || 'Untitled',
     content: article.content || article.description || '',
     summary: article.description || '',
@@ -360,30 +389,41 @@ export function getDateRange(
   preset: '24h' | 'week' | 'month' | 'custom',
   customDates?: { from: Date; to: Date }
 ): { from: Date; to: Date } {
-  const to = new Date();
-  const from = new Date();
+  const now = new Date();
+  console.log('Current date:', now.toISOString());
+  
+  const to = new Date(now);
+  to.setHours(23, 59, 59, 999);
+  
+  let from: Date;
   
   switch (preset) {
     case '24h':
-      from.setDate(to.getDate() - 1);
+      from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
     case 'week':
-      from.setDate(to.getDate() - 7);
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      from.setHours(0, 0, 0, 0);
       break;
     case 'month':
-      from.setDate(to.getDate() - 30);
+      from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      from.setHours(0, 0, 0, 0);
       break;
     case 'custom':
       if (customDates) {
-        // Ensure dates are not in the future
-        const now = new Date();
         return {
           from: customDates.from > now ? now : customDates.from,
           to: customDates.to > now ? now : customDates.to
         };
       }
-      return { from, to };
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      from.setHours(0, 0, 0, 0);
+      break;
+    default:
+      from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      from.setHours(0, 0, 0, 0);
   }
   
+  console.log('Date range:', { from: from.toISOString(), to: to.toISOString() });
   return { from, to };
 }

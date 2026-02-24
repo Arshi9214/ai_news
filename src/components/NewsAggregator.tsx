@@ -242,6 +242,7 @@ export function NewsAggregator({
       setLoadingMore(true);
     } else {
       setLoading(true);
+      onArticlesLoaded([]);
     }
     
     try {
@@ -265,8 +266,8 @@ export function NewsAggregator({
         onArticlesLoaded(fetchedArticles);
         toast.success(`Loaded ${fetchedArticles.length} articles!`);
       } else {
-        const existingTitles = new Set(articles.map(a => a.title.toLowerCase().trim()));
-        const newArticles = fetchedArticles.filter(a => !existingTitles.has(a.title.toLowerCase().trim()));
+        const existingIds = new Set(articles.map(a => a.id));
+        const newArticles = fetchedArticles.filter(a => !existingIds.has(a.id));
         if (newArticles.length > 0) {
           onArticlesLoaded([...articles, ...newArticles]);
           toast.success(`Loaded ${newArticles.length} more articles!`);

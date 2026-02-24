@@ -162,7 +162,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4">
+    <aside className="hidden lg:block w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4">
       {/* Navigation */}
       <nav className="space-y-1 mb-6">
         <button
