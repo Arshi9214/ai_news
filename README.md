@@ -1,6 +1,6 @@
-# 🚀 AI News Summarizer App 2.0
+# AI News Summarizer App 2.0
 
-> **Transform news into knowledge** — Your intelligent companion for staying informed with AI-powered analysis and multi-language support.
+Transform news into knowledge. Your intelligent companion for staying informed with AI-powered analysis and multi-language support.
 
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
@@ -9,33 +9,34 @@
 
 ---
 
-## ✨ Features
+## Features
 
-### 📰 **Smart Multi-Source News Aggregation**
-- Intelligent API selection: **NewsData.io** (recent) → **GNews** (monthly) → **WorldNews** (backup)
-- Automatic fallback system for maximum coverage
+### Smart Multi-Source News Aggregation
+- **RSS Feed Integration**: Direct feeds from 8+ major Indian news sources (TOI, The Hindu, Indian Express, etc.)
+- **CORS Proxy System**: Automatic fallback across multiple proxies for reliable access
 - Smart date range filtering (24h, 7 days, 30 days, custom)
 - Real-time duplicate detection with unique IDs
+- Language filtering (English/Hindi detection)
 
-### 🧠 **AI-Powered Analysis**
+### AI-Powered Analysis
 - **Groq API** integration with 3-key rotation for rate limit handling
 - Lightweight summaries with key takeaways
 - Exam-relevant insights extraction
 - Sentiment analysis
 
-### 📄 **PDF Processing**
+### PDF Processing
 - Upload and analyze PDF documents
 - Extract text with **PDF.js**
 - AI-powered content summarization
 - Export analyzed content
 
-### 🌍 **11 Language Support**
+### 11 Language Support
 English • Hindi • Tamil • Bengali • Telugu • Marathi • Gujarati • Kannada • Malayalam • Punjabi • Urdu
 
-### 🎯 **Topic Categories**
+### Topic Categories
 Economy • Polity • Environment • International Relations • Science & Tech • Society • History • Geography
 
-### 🎨 **Modern UI/UX**
+### Modern UI/UX
 - Dark mode support
 - Responsive design (mobile, tablet, desktop)
 - Smooth animations with Tailwind CSS v3
@@ -43,7 +44,7 @@ Economy • Polity • Environment • International Relations • Science & Tec
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Node.js** 18+ and npm
@@ -67,32 +68,15 @@ cp .env.example .env
 npm run dev
 ```
 
-Visit **http://localhost:3000** 🎉
+Visit http://localhost:3000
 
 ---
 
-## 🔑 API Setup
+## API Setup
 
-### Required APIs
+### Required API
 
-#### 1. **NewsData.io** (Primary for Recent News)
-- **Free Tier**: 200 credits/day, 10 articles per credit, 12-hour delay
-- **Best For**: Last 24h & Last week (highest volume)
-- **Get Key**: [newsdata.io](https://newsdata.io)
-- **Add to `.env`**: `VITE_NEWSDATA_API_KEY=your_key_here`
-
-#### 2. **GNews** (Primary for Monthly)
-- **Free Tier**: 100 requests/day, max 10 articles per request, 12-hour delay
-- **Best For**: Last month (30-day history works perfectly)
-- **Get Key**: [gnews.io](https://gnews.io)
-- **Add to `.env`**: `VITE_GNEWS_API_KEY=your_key_here`
-
-#### 3. **WorldNewsAPI** (Backup)
-- **Free Tier**: 50 points/day, 1-month historical data
-- **Get Key**: [worldnewsapi.com](https://worldnewsapi.com)
-- **Add to `.env`**: `VITE_WORLD_NEWS_API_KEY=your_key_here`
-
-#### 4. **Groq API** (AI Analysis)
+#### **Groq API** (AI Analysis) - REQUIRED
 - **Free Tier**: Generous limits with fast inference
 - **Get Keys**: [console.groq.com](https://console.groq.com)
 - **Add to `.env`**:
@@ -106,20 +90,34 @@ Visit **http://localhost:3000** 🎉
 ### `.env` Template
 
 ```env
-# News APIs
-VITE_WORLD_NEWS_API_KEY=your_worldnews_key
-VITE_GNEWS_API_KEY=your_gnews_key
-VITE_NEWSDATA_API_KEY=your_newsdata_key
-
-# AI Analysis (Groq)
+# AI Analysis (Groq) - REQUIRED
 VITE_GROQ_API_KEY=your_groq_key_1
 VITE_GROQ_API_KEY_2=your_groq_key_2
 VITE_GROQ_API_KEY_3=your_groq_key_3
 ```
 
+### News Sources (No API Keys Needed)
+
+The app uses **RSS feeds** from major Indian news sources:
+- **Times of India** (TOI)
+- **The Hindu**
+- **Indian Express**
+- **Hindustan Times**
+- **NDTV**
+- **LiveMint**
+- **The Wire**
+- **India Today**
+
+**Benefits:**
+- No API keys required for news
+- No rate limits or quotas
+- Real-time news updates
+- Direct from trusted sources
+- Automatic CORS proxy fallback
+
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 AI News Summarizer App 2.0/
@@ -135,7 +133,7 @@ AI News Summarizer App 2.0/
 │   │   ├── MobileMenu.tsx
 │   │   └── Onboarding.tsx
 │   ├── utils/              # Utility functions
-│   │   ├── multiNewsApi.ts # Multi-source news fetching
+│   │   ├── rssApi.ts       # RSS feed fetching & parsing
 │   │   ├── groqApi.ts      # AI analysis integration
 │   │   ├── pdfParser.ts    # PDF processing
 │   │   ├── pdfExporter.ts  # Export functionality
@@ -154,26 +152,29 @@ AI News Summarizer App 2.0/
 
 ---
 
-## 🎯 How It Works
+## How It Works
 
-### Smart News Fetching Flow
+### RSS News Fetching Flow
 ```
 User selects topics & date range
          ↓
-    Is it recent (≤7 days)?
-    ├─ YES → NewsData.io (200 credits/day)
-    │         ↓ (if fails)
-    │        GNews (100 req/day)
-    │         ↓ (if fails)
-    │        WorldNews (50 points/day)
-    │
-    └─ NO → GNews (30-day history)
-              ↓ (if fails)
-             NewsData.io
-              ↓ (if fails)
-             WorldNews
+Fetch from 8 RSS feeds in parallel
          ↓
-Return articles with source info
+Try CORS Proxy 1 (corsproxy.io)
+         ↓ (if fails)
+Try CORS Proxy 2 (allorigins.win)
+         ↓ (if fails)
+Try CORS Proxy 3 (cors-anywhere)
+         ↓
+Parse XML & extract articles
+         ↓
+Filter by language (EN/HI detection)
+         ↓
+Detect topics from content
+         ↓
+Filter by date range
+         ↓
+Return sorted articles (newest first)
 ```
 
 ### AI Analysis Flow
@@ -191,7 +192,7 @@ Generate summary + key takeaways
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Category | Technology |
 |----------|-----------|
@@ -201,41 +202,47 @@ Generate summary + key takeaways
 | **UI Components** | Radix UI, Lucide Icons |
 | **PDF Processing** | PDF.js 4.9.155 |
 | **AI Analysis** | Groq API (Llama models) |
-| **News APIs** | WorldNewsAPI, GNews, NewsData.io |
+| **News Sources** | RSS Feeds (8+ Indian sources) |
 | **State Management** | React Hooks |
 | **Notifications** | Sonner |
 
 ---
 
-## 📊 API Limitations & Solutions
+## News Sources & Reliability
 
-| API | Free Tier | Historical Data | Best For |
-|-----|-----------|----------------|----------|
-| NewsData.io | 200 credits/day, 10 articles/credit | ⚠️ 12h delay | Recent (24h-7d) |
-| GNews | 100 req/day, 10 articles/req | ✅ 30 days (12h delay) | Monthly |
-| WorldNewsAPI | 50 points/day | ✅ 1 month | Backup |
-| Groq | Generous | N/A | 3-key rotation |
+### RSS Feed Sources
+| Source | Type | Update Frequency | Reliability |
+|--------|------|------------------|-------------|
+| Times of India | General | Real-time | Excellent |
+| The Hindu | General | Real-time | Excellent |
+| Indian Express | General | Real-time | Excellent |
+| Hindustan Times | General | Real-time | Very Good |
+| NDTV | General | Real-time | Very Good |
+| LiveMint | Business | Real-time | Very Good |
+| The Wire | Analysis | Real-time | Very Good |
+| India Today | General | Real-time | Very Good |
 
-**Optimized Strategy for India News:**
-- **Last 24h & Last week**: NewsData.io first (200 credits = highest volume)
-- **Last month**: GNews first (30-day history works perfectly)
-- **All ranges**: Automatic fallback to other APIs if primary fails
-- **Reality**: Expect 10-30 articles per fetch (free tier limits)
+### CORS Proxy System
+The app uses a 3-tier fallback system:
+1. **corsproxy.io** (Primary)
+2. **allorigins.win** (Secondary)
+3. **cors-anywhere.herokuapp.com** (Backup)
 
-**Why This Works:**
-- NewsData.io: 200 credits/day beats WorldNews's 50 points for recent news
-- GNews: 30-day history + 100 req/day perfect for monthly searches
-- WorldNews: Kept as backup for all ranges
-- All APIs have 12-hour delay on free tier
+**Benefits:**
+- No API keys needed for news fetching
+- No rate limits or daily quotas
+- Real-time updates from trusted sources
+- Automatic fallback if one proxy fails
+- 100% free news aggregation
 
 **Console Logging:**
-The app shows which API and key is being used in real-time:
-- `🔄 Attempting NEWSDATA API (Key: ...1234)`
-- `✅ SUCCESS: NEWSDATA returned 15 articles`
+The app shows RSS feed status in real-time:
+- RSS toi: Fetched 20 items via https://corsproxy.io
+- RSS hindu failed with proxy 1, trying proxy 2...
 
 ---
 
-## 🎨 Features in Detail
+## Features in Detail
 
 ### Dashboard
 - Recent articles overview
@@ -244,9 +251,11 @@ The app shows which API and key is being used in real-time:
 - Quick stats
 
 ### News Aggregator
-- Multi-source fetching with fallback
+- RSS feed aggregation from 8+ sources
+- Automatic CORS proxy fallback
 - Search & filter by topic
 - Date range selection (24h/week/month/custom)
+- Language detection & filtering
 - Progressive AI summarization
 - Export to JSON/PDF
 
@@ -265,26 +274,27 @@ The app shows which API and key is being used in real-time:
 
 ---
 
-## 🚧 Known Issues & Fixes
+## Known Issues & Fixes
 
-### ✅ Fixed Issues
-1. **Date Range Bug**: Fixed incorrect 24h/week/month calculations using milliseconds
-2. **API Priority**: Optimized to NewsData.io (recent) → GNews (monthly) → WorldNews (backup)
-3. **PDF.js Version**: Corrected worker version mismatch (4.9.155)
-4. **Duplicate Detection**: Changed from title-based to unique ID-based
-5. **Tailwind CSS**: Reverted to stable v3.4.0 from problematic v4
-6. **API Logging**: Added real-time console logs showing which API/key is used
-7. **Server Port**: Updated to port 3000 with auto-open in browser
-8. **News Card UI**: Enhanced with better visual hierarchy and interaction states
+### Fixed Issues
+1. **RSS Integration**: Migrated from paid news APIs to free RSS feeds
+2. **CORS Proxy System**: Implemented 3-tier fallback for reliable access
+3. **Date Range Bug**: Fixed incorrect 24h/week/month calculations
+4. **PDF.js Version**: Corrected worker version mismatch (4.9.155)
+5. **Duplicate Detection**: Changed from title-based to unique ID-based
+6. **Tailwind CSS**: Reverted to stable v3.4.0 from problematic v4
+7. **Language Detection**: Added English/Hindi content filtering
+8. **Server Port**: Updated to port 3000 with auto-open in browser
+9. **News Card UI**: Enhanced with better visual hierarchy
 
-### 🔄 Ongoing Improvements
+### Ongoing Improvements
 - Enhanced error handling
 - Better rate limit management
 - Improved caching strategy
 
 ---
 
-## 📝 Scripts
+## Scripts
 
 ```bash
 # Development
@@ -297,7 +307,7 @@ npm run preview      # Preview production build
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please follow these steps:
 
@@ -309,13 +319,13 @@ Contributions are welcome! Please follow these steps:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Figma Design**: Original design from [Figma Community](https://www.figma.com/design/gyTvphSj7O4ZRiB8SnwwDb/AI-News-Summarizer-App)
 - **APIs**: WorldNewsAPI, GNews, NewsData.io, Groq
@@ -324,21 +334,20 @@ This project is licensed under the MIT License.
 
 ---
 
-## 📧 Support
+## Support
 
 Having issues? Check these resources:
 
-- **API Setup Issues**: Verify keys in `.env` file
+- **API Setup Issues**: Only Groq API keys needed in `.env` file
 - **Build Errors**: Run `npm install` again
-- **News Not Loading**: Check API quotas and internet connection
+- **News Not Loading**: Check internet connection (RSS feeds are free, no quotas!)
+- **CORS Issues**: App automatically tries 3 different proxies
 - **PDF Processing**: Ensure PDF.js worker version matches (4.9.155)
 
 ---
 
-<div align="center">
+---
 
-**Made with ❤️ for staying informed**
+Made for staying informed
 
-[⭐ Star this repo](https://github.com/your-repo) • [🐛 Report Bug](https://github.com/your-repo/issues) • [✨ Request Feature](https://github.com/your-repo/issues)
-
-</div>
+[Star this repo](https://github.com/your-repo) • [Report Bug](https://github.com/your-repo/issues) • [Request Feature](https://github.com/your-repo/issues)
