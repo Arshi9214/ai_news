@@ -273,6 +273,7 @@ export function Dashboard({
                 onToggleBookmark={onToggleBookmark}
                 onViewAnalysis={onViewAnalysis}
                 compact
+                themeMode={themeMode}
               />
             ))}
           </div>
@@ -301,6 +302,7 @@ export function Dashboard({
                     onToggleBookmark={onToggleBookmark}
                     onViewAnalysis={onViewAnalysis}
                     compact
+                    themeMode={themeMode}
                   />
                 );
               } else {

@@ -8,6 +8,8 @@ interface NewsCardProps {
   onToggleBookmark: (id: string) => void;
   onViewAnalysis: (article: NewsArticle) => void;
   isSummarizing?: boolean;
+  compact?: boolean;
+  themeMode?: 'light' | 'dark' | 'newspaper';
 }
 
 const TRANSLATIONS = {
@@ -90,7 +92,7 @@ const TRANSLATIONS = {
   }
 };
 
-export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, isSummarizing = false }: NewsCardProps) {
+export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, isSummarizing = false, themeMode }: NewsCardProps) {
   const t = TRANSLATIONS[language];
   const [showTakeaways, setShowTakeaways] = useState(false);
 
@@ -204,10 +206,22 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             onClick={() => onViewAnalysis(article)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium text-black"
-            style={{ minHeight: '44px', backgroundColor: 'rgb(51, 229, 234)' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(41, 219, 224)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(51, 229, 234)'}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium ${
+              themeMode === 'newspaper'
+                ? 'bg-[#8b7355] hover:bg-[#6b5744] text-[#f9f3e8]'
+                : 'text-black'
+            }`}
+            style={themeMode === 'newspaper' ? { minHeight: '44px' } : { minHeight: '44px', backgroundColor: 'rgb(51, 229, 234)' }}
+            onMouseEnter={(e) => {
+              if (themeMode !== 'newspaper') {
+                e.currentTarget.style.backgroundColor = 'rgb(41, 219, 224)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (themeMode !== 'newspaper') {
+                e.currentTarget.style.backgroundColor = 'rgb(51, 229, 234)';
+              }
+            }}
           >
             <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
             {t.viewAnalysis}
@@ -216,7 +230,11 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
             href={article.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base font-medium"
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium ${
+              themeMode === 'newspaper'
+                ? 'bg-[#3d2817] hover:bg-[#2c1810] text-[#f9f3e8]'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
             style={{ minHeight: '44px' }}
           >
             <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />

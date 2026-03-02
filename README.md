@@ -67,7 +67,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Visit **http://localhost:5173** 🎉
+Visit **http://localhost:3000** 🎉
 
 ---
 
@@ -274,6 +274,8 @@ The app shows which API and key is being used in real-time:
 4. **Duplicate Detection**: Changed from title-based to unique ID-based
 5. **Tailwind CSS**: Reverted to stable v3.4.0 from problematic v4
 6. **API Logging**: Added real-time console logs showing which API/key is used
+7. **Server Port**: Updated to port 3000 with auto-open in browser
+8. **News Card UI**: Enhanced with better visual hierarchy and interaction states
 
 ### 🔄 Ongoing Improvements
 - Enhanced error handling
@@ -286,7 +288,7 @@ The app shows which API and key is being used in real-time:
 
 ```bash
 # Development
-npm run dev          # Start dev server (http://localhost:5173)
+npm run dev          # Start dev server (http://localhost:3000)
 
 # Production
 npm run build        # Build for production

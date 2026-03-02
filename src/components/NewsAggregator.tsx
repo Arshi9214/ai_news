@@ -570,6 +570,7 @@ export function NewsAggregator({
                   onToggleBookmark={onToggleBookmark}
                   onViewAnalysis={handleViewAnalysis}
                   isSummarizing={summarizingIds.has(article.id)}
+                  themeMode={themeMode}
                 />
               </div>
             ))}
