@@ -237,7 +237,8 @@ export function NewsAggregator({
         article.title,
         article.content,
         article.summary || '',
-        language
+        language,
+        article.url // Pass the article URL for web scraping
       );
       
       return {

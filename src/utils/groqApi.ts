@@ -1,4 +1,5 @@
 import { Language } from '../App';
+import { scrapeArticleContent } from './webScraper';
 
 /**
  * Groq API Integration for Fast AI Summaries
@@ -54,13 +55,14 @@ function rotateApiKey(): void {
 }
 
 /**
- * Generate summary and key takeaways using Groq
+ * Generate summary and key takeaways using Groq with full article content
  */
 export async function generateLightweightSummary(
   title: string,
   content: string,
   description: string,
-  language: Language
+  language: Language,
+  articleUrl?: string
 ): Promise<GroqSummaryResult> {
   // Check if API keys are configured
   if (GROQ_API_KEYS[0] === 'YOUR_GROQ_API_KEY_1_HERE') {
@@ -69,11 +71,26 @@ export async function generateLightweightSummary(
   }
 
   try {
+    // Try to get full article content if URL is provided
+    let fullContent = content || description;
+    
+    if (articleUrl && articleUrl.startsWith('http')) {
+      console.log('🌐 Fetching full article content...');
+      const scrapedResult = await scrapeArticleContent(articleUrl);
+      
+      if (scrapedResult.success && scrapedResult.content.length > fullContent.length) {
+        fullContent = scrapedResult.content;
+        console.log(`✅ Using scraped content (${fullContent.length} chars) instead of RSS (${content.length} chars)`);
+      } else {
+        console.log('⚠️ Scraping failed or insufficient, using RSS content');
+      }
+    }
+
     // Wait for rate limit
     await waitForRateLimit();
 
     const languagePrompt = getLanguagePrompt(language);
-    const prompt = createSummaryPrompt(title, content, description, languagePrompt);
+    const prompt = createSummaryPrompt(title, fullContent, description, languagePrompt);
 
     const response = await fetchWithKeyRotation(prompt, languagePrompt);
     
@@ -182,17 +199,18 @@ function createSummaryPrompt(
   description: string,
   languagePrompt: string
 ): string {
-  const text = description || content.substring(0, 2000);
+  // Use full content if available, otherwise fall back to description
+  const text = content && content.length > 500 ? content : (description || content);
   
   return `${languagePrompt}
 
-Summarize this news for exam prep.
+Analyze this complete news article for exam preparation. Provide detailed, specific insights.
 
 Title: ${title}
-Content: ${text}
+Full Article Content: ${text.substring(0, 6000)}
 
 Return ONLY valid JSON (no extra text):
-{"summary":"3-4 complete sentences covering all key points","keyTakeaways":["point 1","point 2","point 3"]}`;
+{"summary":"Comprehensive 4-5 sentence summary covering all key points, facts, and implications","keyTakeaways":["specific fact 1 with numbers/details","specific fact 2 with context","specific fact 3 with implications","exam-relevant insight"]}`;
 }
 
 /**
