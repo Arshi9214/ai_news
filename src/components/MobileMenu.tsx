@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Sun, Moon, BookOpen, FileText, Home, Settings, Bookmark, Download } from 'lucide-react';
+import { Menu, X, Sun, Moon, BookOpen, FileText, Home, Settings, Bookmark, Download, User, LogOut, Trash2 } from 'lucide-react';
 import { Language } from '../App';
+import { User as UserType } from '../utils/userManager';
+import DatabaseService from '../utils/database';
 
 interface MobileMenuProps {
   language: Language;
@@ -10,6 +12,8 @@ interface MobileMenuProps {
   bookmarkCount: number;
   onNavigate: (section: 'dashboard' | 'news' | 'pdf' | 'bookmarks') => void;
   currentSection: string;
+  currentUser?: UserType;
+  onLogout?: () => void;
 }
 
 const TRANSLATIONS = {
@@ -23,7 +27,10 @@ const TRANSLATIONS = {
     settings: 'Settings',
     darkMode: 'Dark Mode',
     language: 'Language',
-    export: 'Export Data'
+    export: 'Export Data',
+    logout: 'Logout',
+    deleteAccount: 'Delete Account',
+    confirmDelete: 'Delete your account and all data?'
   },
   hi: {
     menu: 'मेनू',
@@ -35,7 +42,10 @@ const TRANSLATIONS = {
     settings: 'सेटिंग्स',
     darkMode: 'डार्क मोड',
     language: 'भाषा',
-    export: 'डेटा निर्यात करें'
+    export: 'डेटा निर्यात करें',
+    logout: 'लॉगआउट',
+    deleteAccount: 'खाता हटाएं',
+    confirmDelete: 'अपना खाता और सारा डेटा हटाएं?'
   }
 };
 
@@ -60,7 +70,9 @@ export function MobileMenu({
   onLanguageChange,
   bookmarkCount,
   onNavigate,
-  currentSection
+  currentSection,
+  currentUser,
+  onLogout
 }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showLanguages, setShowLanguages] = useState(false);
@@ -176,6 +188,55 @@ export function MobileMenu({
 
         {/* Divider */}
         <div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700" />
+
+        {/* User Section */}
+        {currentUser && (
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white truncate">{currentUser.name}</p>
+                {currentUser.email && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{currentUser.email}</p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  onLogout?.();
+                  setIsOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                {t.logout}
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm(t.confirmDelete)) {
+                    try {
+                      await DatabaseService.clearAllData();
+                      const users = JSON.parse(localStorage.getItem('allUsers') || '[]');
+                      const updated = users.filter((u: UserType) => u.id !== currentUser.id);
+                      localStorage.setItem('allUsers', JSON.stringify(updated));
+                      onLogout?.();
+                      setIsOpen(false);
+                    } catch (error) {
+                      console.error('Delete failed:', error);
+                    }
+                  }
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                {t.deleteAccount}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Settings */}
         <div className="p-4 space-y-3">

@@ -333,19 +333,12 @@ function generateHistoricalDates(from: Date, to: Date): Date[] {
   
   const daysDiff = (actualTo.getTime() - actualFrom.getTime()) / (1000 * 60 * 60 * 24);
   
-  if (daysDiff <= 30) {
-    // For month, scrape every 3 days
-    for (let d = new Date(actualFrom); d <= actualTo; d.setDate(d.getDate() + 3)) {
-      dates.push(new Date(d));
-    }
-  } else {
-    // For longer ranges, scrape weekly
-    for (let d = new Date(actualFrom); d <= actualTo; d.setDate(d.getDate() + 7)) {
-      dates.push(new Date(d));
-    }
+  // Scrape every day for all ranges (month and custom)
+  for (let d = new Date(actualFrom); d <= actualTo; d.setDate(d.getDate() + 1)) {
+    dates.push(new Date(d));
   }
   
-  return dates.slice(0, 8); // Limit to 8 dates max
+  return dates; // No limit - scrape all dates
 }
 
 /**

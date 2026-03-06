@@ -13,6 +13,14 @@ export function DatabaseViewer({ language, themeMode }: DatabaseViewerProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [userStats, setUserStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
+
+  const maskEmail = (email: string) => {
+    if (!email) return '';
+    const [local, domain] = email.split('@');
+    if (!domain) return email;
+    const maskedLocal = local.length > 2 ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1] : local;
+    return `${maskedLocal}@${domain}`;
+  };
   
   // Only show for admin user "admin"
   const currentUser = UserManager.getCurrentUser();
@@ -77,11 +85,15 @@ export function DatabaseViewer({ language, themeMode }: DatabaseViewerProps) {
       const stats: Record<string, any> = {};
       const token = localStorage.getItem('auth_token');
       
+      // Auto-detect API URL
+      const hostname = window.location.hostname;
+      const baseUrl = (hostname === 'localhost' || hostname === '127.0.0.1') 
+        ? 'http://localhost:5000' 
+        : `http://${hostname}:5000`;
+      
       for (const user of allUsers) {
         try {
-          // Fetch stats for each specific user by making authenticated request
-          // Since we can't impersonate users, we'll query the database directly
-          const response = await fetch(`http://10.200.44.214:5000/api/admin/user-stats/${user.id}`, {
+          const response = await fetch(`${baseUrl}/api/admin/user-stats/${user.id}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -182,18 +194,18 @@ export function DatabaseViewer({ language, themeMode }: DatabaseViewerProps) {
                 }`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-semibold ${
+                  <div className="flex-1 min-w-0">
+                    <div className="mb-1">
+                      <span className={`font-semibold block truncate ${
                         themeMode === 'newspaper' ? 'text-[#2c1810]' : 'text-gray-900 dark:text-white'
                       }`}>
                         {user.name}
                       </span>
                       {user.email && (
-                        <span className={`text-sm ${
+                        <span className={`text-sm block truncate ${
                           themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-500 dark:text-gray-400'
                         }`}>
-                          ({user.email})
+                          ({maskEmail(user.email)})
                         </span>
                       )}
                     </div>
@@ -201,7 +213,7 @@ export function DatabaseViewer({ language, themeMode }: DatabaseViewerProps) {
                     <div className={`text-xs space-y-1 ${
                       themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'
                     }`}>
-                      <div><strong>{translations.userId}:</strong> {user.id}</div>
+                      <div className="break-all"><strong>{translations.userId}:</strong> {user.id}</div>
                       <div><strong>{translations.created}:</strong> {user.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}</div>
                       <div><strong>{translations.lastLogin}:</strong> {user.last_login ? new Date(user.last_login).toLocaleString() : 'N/A'}</div>
                     </div>
@@ -217,9 +229,6 @@ export function DatabaseViewer({ language, themeMode }: DatabaseViewerProps) {
 
                 {userStats[user.id] && (
                   <div className="flex gap-4 text-sm">
-                    <span className={themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'}>
-                      {translations.articles}: <strong>{userStats[user.id].articlesCount || 0}</strong>
-                    </span>
                     <span className={themeMode === 'newspaper' ? 'text-[#5a4a3a]' : 'text-gray-600 dark:text-gray-400'}>
                       {translations.pdfs}: <strong>{userStats[user.id].pdfsCount || 0}</strong>
                     </span>

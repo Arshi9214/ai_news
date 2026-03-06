@@ -249,7 +249,17 @@ export function AnalysisViewer({
 }: AnalysisViewerProps) {
   const t = TRANSLATIONS[language];
   const isArticle = "source" in item;
-  const analysis = item.analysis;
+  
+  // Parse analysis if it's a string
+  let analysis = item.analysis;
+  if (typeof analysis === 'string') {
+    try {
+      analysis = JSON.parse(analysis);
+    } catch (error) {
+      console.error('Failed to parse analysis:', error);
+      analysis = null;
+    }
+  }
 
   const handleExport = async () => {
     try {
@@ -395,6 +405,23 @@ export function AnalysisViewer({
                 </ul>
               </div>
             )}
+
+          {/* Show message if no detailed analysis */}
+          {(!analysis.keyTakeaways || analysis.keyTakeaways.length === 0) &&
+           (!analysis.importantFacts || analysis.importantFacts.length === 0) &&
+           (!analysis.potentialQuestions || analysis.potentialQuestions.length === 0) && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  Limited Analysis Available
+                </h3>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300">
+                The AI provided a summary but detailed analysis sections are not available. The summary above contains the key information from the content.
+              </p>
+            </div>
+          )}
 
           {/* Exam Relevance */}
           {analysis.examRelevance && (

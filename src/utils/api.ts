@@ -1,4 +1,15 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Auto-detect API URL based on current hostname
+const getApiUrl = () => {
+  const hostname = window.location.hostname;
+  // If accessing via localhost or 127.0.0.1, use localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  // Otherwise use the same hostname (for network access)
+  return `http://${hostname}:5000/api`;
+};
+
+const API_URL = import.meta.env.VITE_API_URL || getApiUrl();
 
 let authToken: string | null = localStorage.getItem('auth_token');
 

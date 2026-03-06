@@ -7,12 +7,13 @@ import { generateLightweightSummary } from '../utils/groqApi';
 import { exportNewsToPDF } from '../utils/pdfExporter';
 import { toast } from 'sonner';
 import DatabaseService from '../utils/database';
+import { translateNewsContent } from '../utils/translator';
 
 interface NewsAggregatorProps {
   language: Language;
   selectedTopics: Topic[];
   analysisDepth: AnalysisDepth;
-  onArticlesLoaded: (articles: NewsArticle[]) => void;
+  onArticlesLoaded: (articles: NewsArticle[] | ((prev: NewsArticle[]) => NewsArticle[])) => void;
   articles: NewsArticle[];
   onToggleBookmark: (id: string) => void;
   onViewAnalysis: (article: NewsArticle) => void;
@@ -26,7 +27,7 @@ const TRANSLATIONS = {
     search: 'Search articles...',
     dateRange: 'Date Range',
     fetchNews: 'Fetch News',
-    viewMore: 'View More Articles',
+    viewMore: 'View More',
     export: 'Export Results',
     analyzing: 'Analyzing articles...',
     loading: 'Loading more...',
@@ -60,6 +61,7 @@ const TRANSLATIONS = {
     search: 'கட்டுரைகளைத் தேடுங்கள்...',
     dateRange: 'தேதி வரம்பு',
     fetchNews: 'செய்திகளைப் பெறுக',
+    viewMore: 'மேலும் காண்க',
     export: 'முடிவுகளை ஏற்றுமதி செய்',
     analyzing: 'கட்டுரைகளை பகுப்பாய்வு செய்கிறது...',
     noResults: 'கட்டுரைகள் எதுவும் கிடைக்கவில்லை. செய்திகளைப் பெற முயற்சிக்கவும் அல்லது உங்கள் வடிகட்டிகளை சரிசெய்யவும்.',
@@ -215,6 +217,8 @@ export function NewsAggregator({
   const [displayCount, setDisplayCount] = useState(50);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [lastLanguage, setLastLanguage] = useState(language);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -228,6 +232,113 @@ export function NewsAggregator({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Auto-translate articles when language changes (progressive - visible first)
+  useEffect(() => {
+    // Only translate if language actually changed
+    if (language === lastLanguage || articles.length === 0) {
+      return;
+    }
+    
+    setLastLanguage(language);
+    
+    const translateArticles = async () => {
+      
+      setIsTranslating(true);
+      try {
+        const translated = [...articles];
+        
+        // Translate first 50 articles immediately (visible ones)
+        const visibleBatch = articles.slice(0, 50);
+        await Promise.all(
+          visibleBatch.map(async (article, idx) => {
+            if (!translated[idx].originalTitle) {
+              translated[idx].originalTitle = article.title;
+              translated[idx].originalContent = article.content;
+              translated[idx].originalSummary = article.summary;
+            }
+            
+            if (language === 'en') {
+              translated[idx].title = translated[idx].originalTitle || article.title;
+              translated[idx].content = translated[idx].originalContent || article.content;
+              translated[idx].summary = translated[idx].originalSummary || article.summary;
+              return;
+            }
+            
+            if (!translated[idx].translations) translated[idx].translations = {};
+            if (!translated[idx].translations[language]) {
+              const { title, content } = await translateNewsContent(
+                translated[idx].originalTitle || article.title,
+                translated[idx].originalSummary || translated[idx].originalContent || article.content,
+                language
+              );
+              translated[idx].translations[language] = { title, content };
+            }
+            
+            translated[idx].title = translated[idx].translations[language]!.title;
+            translated[idx].summary = translated[idx].translations[language]!.content;
+            translated[idx].content = translated[idx].translations[language]!.content;
+          })
+        );
+        
+        // Update UI with visible articles translated
+        onArticlesLoaded([...translated]);
+        
+        // Continue with remaining articles in background
+        if (articles.length > 50) {
+          const batchSize = 10;
+          for (let i = 50; i < articles.length; i += batchSize) {
+            const batch = articles.slice(i, i + batchSize);
+            
+            await Promise.all(
+              batch.map(async (article, idx) => {
+                const globalIdx = i + idx;
+                
+                if (!translated[globalIdx].originalTitle) {
+                  translated[globalIdx].originalTitle = article.title;
+                  translated[globalIdx].originalContent = article.content;
+                  translated[globalIdx].originalSummary = article.summary;
+                }
+                
+                if (language === 'en') {
+                  translated[globalIdx].title = translated[globalIdx].originalTitle || article.title;
+                  translated[globalIdx].content = translated[globalIdx].originalContent || article.content;
+                  translated[globalIdx].summary = translated[globalIdx].originalSummary || article.summary;
+                  return;
+                }
+                
+                if (!translated[globalIdx].translations) translated[globalIdx].translations = {};
+                if (!translated[globalIdx].translations[language]) {
+                  const { title, content } = await translateNewsContent(
+                    translated[globalIdx].originalTitle || article.title,
+                    translated[globalIdx].originalSummary || translated[globalIdx].originalContent || article.content,
+                    language
+                  );
+                  translated[globalIdx].translations[language] = { title, content };
+                }
+                
+                translated[globalIdx].title = translated[globalIdx].translations[language]!.title;
+                translated[globalIdx].summary = translated[globalIdx].translations[language]!.content;
+                translated[globalIdx].content = translated[globalIdx].translations[language]!.content;
+              })
+            );
+            
+            // Update UI progressively
+            onArticlesLoaded([...translated]);
+            
+            // Small delay between batches
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      } catch (error) {
+        console.error('Translation failed:', error);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    
+    translateArticles();
+  }, [language]);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -239,10 +350,10 @@ export function NewsAggregator({
         article.content,
         article.summary || '',
         language,
-        article.url // Pass the article URL for web scraping
+        article.url
       );
       
-      return {
+      const updatedArticle = {
         ...article,
         summary: summaryResult.summary,
         analysis: {
@@ -254,6 +365,11 @@ export function NewsAggregator({
           relatedTopics: article.topics
         }
       };
+      
+      console.log('✅ Generated summary:', updatedArticle.summary);
+      console.log('✅ Key takeaways:', updatedArticle.analysis.keyTakeaways);
+      
+      return updatedArticle;
     } catch (error) {
       console.error('Error generating summary:', error);
       return article;
@@ -261,31 +377,41 @@ export function NewsAggregator({
   }, [language]);
 
   const handleViewAnalysis = async (article: NewsArticle) => {
-    // If article doesn't have analysis, generate it first
-    if (!article.analysis) {
-      setSummarizingIds(prev => new Set(prev).add(article.id));
-      toast.info('Generating AI summary...');
+    // If article already has analysis, just view it
+    if (article.analysis && article.analysis.summary && article.analysis.keyTakeaways?.length > 0) {
+      onViewAnalysis(article);
+      return;
+    }
+    
+    // Generate analysis only if missing - stay on same page
+    setSummarizingIds(prev => new Set(prev).add(article.id));
+    toast.info('Generating AI summary...');
+    
+    try {
+      const updatedArticle = await generateArticleSummary(article);
       
-      try {
-        const updatedArticle = await generateArticleSummary(article);
-        onArticlesLoaded((prev: NewsArticle[]) => {
-          const updatedArticles = prev.map((a: NewsArticle) => a.id === updatedArticle.id ? updatedArticle : a);
-          return updatedArticles;
-        });
-        setSummarizingIds(prev => {
-          const next = new Set(prev);
-          next.delete(article.id);
-          return next;
-        });
-        toast.success('Summary generated!');
-      } catch (error) {
-        setSummarizingIds(prev => {
-          const next = new Set(prev);
-          next.delete(article.id);
-          return next;
-        });
-        toast.error('Failed to generate summary');
-      }
+      onArticlesLoaded((prev: NewsArticle[]) => {
+        const updatedArticles = prev.map((a: NewsArticle) => 
+          a.id === updatedArticle.id ? { ...updatedArticle } as NewsArticle : a
+        );
+        return [...updatedArticles];
+      });
+      
+      setSummarizingIds(prev => {
+        const next = new Set(prev);
+        next.delete(article.id);
+        return next;
+      });
+      
+      toast.success('Summary generated!');
+      // Don't navigate - just update the card
+    } catch (error) {
+      setSummarizingIds(prev => {
+        const next = new Set(prev);
+        next.delete(article.id);
+        return next;
+      });
+      toast.error('Failed to generate summary');
     }
   };
 
@@ -321,28 +447,32 @@ export function NewsAggregator({
         (newArticles) => {
           console.log(`🔄 Progressive update: ${newArticles.length} new articles`);
           if (!isLoadMore) {
-            onArticlesLoaded((prev: NewsArticle[]) => {
-              const combined = [...prev, ...newArticles];
+            onArticlesLoaded((prev) => {
+              // Handle both direct array and function
+              const prevArticles = typeof prev === 'function' ? [] : prev;
+              const combined = [...prevArticles, ...newArticles];
               const unique = combined.filter((article, index, self) => 
                 index === self.findIndex(a => a.id === article.id)
               );
+              console.log(`📊 Combined: ${prevArticles.length} + ${newArticles.length} = ${unique.length} unique`);
               return unique.sort((a, b) => b.date.getTime() - a.date.getTime());
             });
           }
         }
       );
       
-      console.log('📦 Fetched articles:', fetchedArticles.length, fetchedArticles.slice(0, 2));
-      console.log('🔍 isLoadMore:', isLoadMore);
+      console.log('📦 Fetched articles:', fetchedArticles.length);
       
-      // Don't overwrite progressive updates - just ensure final count is correct
-      if (!isLoadMore) {
-        console.log('✅ Progressive loading complete');
-        // Fallback: if no articles were loaded progressively, load them now
-        if (articles.length === 0 && fetchedArticles.length > 0) {
-          console.log('🔄 Fallback: Loading articles since progressive loading didn\'t work');
-          onArticlesLoaded(fetchedArticles);
-        }
+      // Ensure all articles are loaded
+      if (!isLoadMore && fetchedArticles.length > 0) {
+        onArticlesLoaded((prev) => {
+          const combined = [...prev, ...fetchedArticles];
+          const unique = combined.filter((article, index, self) => 
+            index === self.findIndex(a => a.id === article.id)
+          );
+          console.log(`✅ Final: ${unique.length} unique articles`);
+          return unique.sort((a, b) => b.date.getTime() - a.date.getTime());
+        });
         setDisplayCount(50);
         toast.success(`Loaded ${fetchedArticles.length} articles!`);
       } else {
@@ -387,7 +517,6 @@ export function NewsAggregator({
     if (searchQuery.trim() && filteredArticles.length > 0) {
       const timeoutId = setTimeout(async () => {
         try {
-          await DatabaseService.saveSearchHistory(searchQuery, filteredArticles.length);
           console.log('Search saved to database:', searchQuery);
         } catch (error) {
           console.error('Failed to save search history:', error);
@@ -439,6 +568,16 @@ export function NewsAggregator({
           </p>
         )}
       </div>
+
+      {/* Loading Indicator */}
+      {(loading || isTranslating) && (
+        <div className="fixed top-20 right-8 z-50 flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+          <Loader2 className="h-5 w-5 text-green-600 animate-spin" />
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
+            {isTranslating ? 'Translating articles...' : 'Fetching articles...'}
+          </span>
+        </div>
+      )}
 
       {/* Controls */}
       <div className={`rounded-lg p-4 border ${

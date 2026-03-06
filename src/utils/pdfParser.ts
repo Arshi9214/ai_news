@@ -55,15 +55,53 @@ export async function extractTextFromPDF(file: File): Promise<PDFParseResult> {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       
-      // Combine text items with proper spacing
-      const pageText = textContent.items
-        .map((item: any) => {
-          if ('str' in item) {
-            return item.str;
+      // Group items by line (Y position) for Indian language support
+      const items = textContent.items.filter(
+        (item: any) => 'str' in item && item.str.length > 0
+      );
+
+      // Group into lines based on Y coordinate
+      const lineMap = new Map<number, any[]>();
+      for (const item of items as any[]) {
+        const y = Math.round(item.transform[5]);
+        // Find closest existing line within 3 units
+        let lineKey = y;
+        for (const key of lineMap.keys()) {
+          if (Math.abs(key - y) <= 3) {
+            lineKey = key;
+            break;
           }
-          return '';
-        })
-        .join(' ');
+        }
+        if (!lineMap.has(lineKey)) lineMap.set(lineKey, []);
+        lineMap.get(lineKey)!.push(item);
+      }
+
+      // Sort lines top to bottom
+      const sortedLines = Array.from(lineMap.entries())
+        .sort((a, b) => b[0] - a[0]);
+
+      // For each line, sort items left to right and join
+      const pageText = sortedLines.map(([, lineItems]) => {
+        const sorted = lineItems.sort(
+          (a: any, b: any) => a.transform[4] - b.transform[4]
+        );
+
+        // Join items in line — add space only if real gap exists
+        let lineText = '';
+        for (let i = 0; i < sorted.length; i++) {
+          const item = sorted[i];
+          if (i === 0) {
+            lineText += item.str;
+          } else {
+            const prev = sorted[i - 1];
+            const prevEnd = prev.transform[4] + (prev.width || 0);
+            const gap = item.transform[4] - prevEnd;
+            // For Indian scripts, be conservative with spaces
+            lineText += (gap > 3 ? ' ' : '') + item.str;
+          }
+        }
+        return lineText;
+      }).join('\n');
       
       fullText += pageText + '\n\n';
     }

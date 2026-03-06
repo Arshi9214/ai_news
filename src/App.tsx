@@ -12,9 +12,11 @@ import { toast, Toaster } from 'sonner';
 import DatabaseService from './utils/database';
 import { useArticles, usePreferences } from './hooks/useDatabase';
 import { UserManager, User } from './utils/userManager';
+import { translateArticles, translatePDFs } from './utils/translator';
 
 export type Language = 'en' | 'hi' | 'ta' | 'bn' | 'te' | 'mr' | 'gu' | 'kn' | 'ml' | 'pa' | 'ur';
 export type Topic = 'economy' | 'polity' | 'environment' | 'international' | 'science' | 'society' | 'history' | 'geography' | 'all';
+export type AnalysisDepth = 'basic' | 'advanced';
 
 export interface NewsArticle {
   id: string;
@@ -30,6 +32,10 @@ export interface NewsArticle {
   analysis?: ArticleAnalysis;
   bookmarked?: boolean;
   hasRealContent?: boolean;
+  originalTitle?: string;
+  originalContent?: string;
+  originalSummary?: string;
+  translations?: Partial<Record<Language, { title: string; content: string }>>;
 }
 
 export interface ArticleAnalysis {
@@ -65,6 +71,7 @@ function App() {
   const [processedPDFs, setProcessedPDFs] = useState<ProcessedPDF[]>([]);
   const [selectedItem, setSelectedItem] = useState<NewsArticle | ProcessedPDF | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [isTranslating, setIsTranslating] = useState(false);
 
   // Check for existing user on app start
   useEffect(() => {
@@ -78,12 +85,7 @@ function App() {
   const { articles: dbArticles, saveArticles, toggleBookmark: dbToggleBookmark } = useArticles();
   const { preferences, savePreferences } = usePreferences();
 
-  // Load articles from database
-  useEffect(() => {
-    if (dbArticles.length > 0) {
-      setArticles(dbArticles);
-    }
-  }, [dbArticles]);
+  // Don't load articles from database - news feed is temporary
 
   // Load PDFs from database
   useEffect(() => {
@@ -120,6 +122,27 @@ function App() {
       });
     }
   }, [language, selectedTopics, themeMode, preferences, savePreferences]);
+
+  // Auto-translate content when language changes
+  useEffect(() => {
+    const translateContent = async () => {
+      if (language === 'en' || articles.length === 0) return;
+      
+      setIsTranslating(true);
+      try {
+        await translateArticles(articles, language);
+        await translatePDFs(processedPDFs, language);
+        setArticles([...articles]);
+        setProcessedPDFs([...processedPDFs]);
+      } catch (error) {
+        console.error('Translation failed:', error);
+      } finally {
+        setIsTranslating(false);
+      }
+    };
+    
+    translateContent();
+  }, [language]);
 
   const toggleBookmark = async (articleId: string) => {
     // Update local state immediately for better UX
@@ -178,24 +201,15 @@ function App() {
   const addArticles = async (newArticles: NewsArticle[] | ((prev: NewsArticle[]) => NewsArticle[])) => {
     console.log('📥 addArticles called with:', typeof newArticles === 'function' ? 'function' : `${newArticles.length} articles`);
     
-    let articlesToSave: NewsArticle[];
-    
     if (typeof newArticles === 'function') {
-      setArticles(newArticles);
-      articlesToSave = newArticles([]);
+      setArticles(prev => {
+        const updated = newArticles(prev);
+        console.log('✅ Function update: prev had', prev.length, 'now has', updated.length);
+        return updated;
+      });
     } else {
       console.log('✅ Setting articles to:', newArticles.length);
       setArticles(newArticles);
-      articlesToSave = newArticles;
-    }
-    
-    // Save to database in background
-    try {
-      await saveArticles(articlesToSave);
-      console.log('💾 Articles saved to database');
-    } catch (error) {
-      console.error('Failed to save articles to database:', error);
-      // Don't show error to user as this is background operation
     }
   };
 
@@ -290,6 +304,8 @@ function App() {
         bookmarkCount={bookmarkedArticles.length + bookmarkedPDFs.length}
         onNavigate={handleNavigate}
         currentSection={viewMode}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       <div className={`min-h-screen transition-colors ${
@@ -335,6 +351,7 @@ function App() {
               <NewsAggregator
                 language={language}
                 selectedTopics={selectedTopics}
+                analysisDepth="advanced"
                 onArticlesLoaded={addArticles}
                 articles={articles}
                 onToggleBookmark={toggleBookmark}
@@ -346,6 +363,7 @@ function App() {
             {viewMode === 'pdf' && (
               <PDFProcessor
                 language={language}
+                analysisDepth="advanced"
                 onPDFProcessed={addProcessedPDF}
                 processedPDFs={processedPDFs}
                 onViewAnalysis={viewAnalysis}

@@ -4,6 +4,22 @@ import { ProcessedPDF, AnalysisDepth, Language, ThemeMode } from '../App';
 import { extractTextFromPDF, analyzePDFContent as analyzePDFStructure } from '../utils/pdfParser';
 import { analyzeContentWithAI } from '../utils/aiAnalyzer';
 import { toast } from 'sonner';
+import { getTranslatedText } from '../utils/translator';
+
+// Simple language detection
+function detectLanguage(text: string): Language {
+  const sample = text.substring(0, 500);
+  if (/[\u0C00-\u0C7F]/.test(sample)) return 'te'; // Telugu
+  if (/[\u0B80-\u0BFF]/.test(sample)) return 'ta'; // Tamil
+  if (/[\u0900-\u097F]/.test(sample)) return 'hi'; // Hindi
+  if (/[\u0980-\u09FF]/.test(sample)) return 'bn'; // Bengali
+  if (/[\u0C80-\u0CFF]/.test(sample)) return 'kn'; // Kannada
+  if (/[\u0D00-\u0D7F]/.test(sample)) return 'ml'; // Malayalam
+  if (/[\u0A80-\u0AFF]/.test(sample)) return 'gu'; // Gujarati
+  if (/[\u0A00-\u0A7F]/.test(sample)) return 'pa'; // Punjabi
+  if (/[\u0600-\u06FF]/.test(sample)) return 'ur'; // Urdu
+  return 'en'; // Default English
+}
 
 interface PDFProcessorProps {
   language: Language;
@@ -238,13 +254,15 @@ export function PDFProcessor({
     try {
       toast.info('Analyzing pasted text...');
       
-      // Generate short title from first 50 chars
       const shortTitle = pastedText.trim().substring(0, 50).replace(/\s+/g, ' ') + (pastedText.length > 50 ? '...' : '');
+      
+      // Detect language from pasted text
+      const detectedLang = detectLanguage(pastedText);
       
       const analysis = await analyzeContentWithAI({
         content: pastedText,
         depth: analysisDepth,
-        language,
+        language: detectedLang,
         context: 'text'
       });
       
@@ -295,7 +313,7 @@ export function PDFProcessor({
           const analysis = await analyzeContentWithAI({
             content: pdfResult.text,
             depth: analysisDepth,
-            language,
+            language: 'en',
             context: 'pdf'
           });
           
@@ -331,6 +349,9 @@ export function PDFProcessor({
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t.subtitle}</p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 italic">
+          Note: PDF analysis is in English only. For other languages, use "Paste Text" (auto-detects language).
+        </p>
       </div>
 
       {/* Upload Area */}
@@ -449,7 +470,10 @@ export function PDFProcessor({
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {processedPDFs.map(pdf => (
+            {processedPDFs.map(pdf => {
+              const displayName = getTranslatedText(pdf, 'name', language);
+              
+              return (
               <div
                 key={pdf.id}
                 className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
@@ -460,7 +484,7 @@ export function PDFProcessor({
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-gray-900 dark:text-white truncate">{pdf.name}</h4>
+                    <h4 className="font-semibold text-gray-900 dark:text-white truncate">{displayName}</h4>
                     <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                       <span>{pdf.uploadDate.toLocaleDateString()}</span>
                       {pdf.pageCount && <span>{pdf.pageCount} {t.pages}</span>}
@@ -504,7 +528,7 @@ export function PDFProcessor({
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

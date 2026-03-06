@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bookmark, ExternalLink, ChevronDown, ChevronUp, Lightbulb, Loader2 } from 'lucide-react';
 import { NewsArticle, Language } from '../App';
+import { getTranslatedText } from '../utils/translator';
 
 interface NewsCardProps {
   article: NewsArticle;
@@ -96,6 +97,9 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
   const t = TRANSLATIONS[language];
   const [showTakeaways, setShowTakeaways] = useState(false);
 
+  const displayTitle = getTranslatedText(article, 'title', language);
+  const displaySummary = article.summary ? getTranslatedText(article, 'summary', language) : null;
+
   const hasKeyTakeaways = article.analysis?.keyTakeaways && article.analysis.keyTakeaways.length > 0;
   const sourceName = typeof article.source === 'string' 
     ? article.source 
@@ -122,7 +126,7 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              {article.title}
+              {displayTitle}
             </h3>
             <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
               <span className="font-medium">{String(sourceName)}</span>
@@ -160,9 +164,9 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Generating summary...</span>
           </div>
-        ) : article.summary ? (
+        ) : (displaySummary || article.analysis?.summary) ? (
           <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-4">
-            {article.summary}
+            {displaySummary || article.analysis?.summary}
           </p>
         ) : null}
 
@@ -222,28 +226,41 @@ export function NewsCard({ article, language, onToggleBookmark, onViewAnalysis, 
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <button
-            onClick={() => onViewAnalysis(article)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium ${
-              themeMode === 'newspaper'
-                ? 'bg-[#8b7355] hover:bg-[#6b5744] text-[#f9f3e8]'
-                : 'text-black'
-            }`}
-            style={themeMode === 'newspaper' ? { minHeight: '44px' } : { minHeight: '44px', backgroundColor: 'rgb(51, 229, 234)' }}
-            onMouseEnter={(e) => {
-              if (themeMode !== 'newspaper') {
-                e.currentTarget.style.backgroundColor = 'rgb(41, 219, 224)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (themeMode !== 'newspaper') {
-                e.currentTarget.style.backgroundColor = 'rgb(51, 229, 234)';
-              }
-            }}
-          >
-            <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
-            {t.viewAnalysis}
-          </button>
+          {/* Only show Generate Summary button if no analysis */}
+          {!article.analysis?.summary && (
+            <button
+              onClick={() => onViewAnalysis(article)}
+              disabled={isSummarizing}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-medium ${
+                themeMode === 'newspaper'
+                  ? 'bg-[#8b7355] hover:bg-[#6b5744] text-[#f9f3e8] disabled:bg-[#b8a785]'
+                  : 'disabled:opacity-50'
+              }`}
+              style={themeMode === 'newspaper' ? { minHeight: '44px' } : { minHeight: '44px', backgroundColor: isSummarizing ? 'rgb(100, 200, 200)' : 'rgb(51, 229, 234)' }}
+              onMouseEnter={(e) => {
+                if (themeMode !== 'newspaper' && !isSummarizing) {
+                  e.currentTarget.style.backgroundColor = 'rgb(41, 219, 224)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (themeMode !== 'newspaper' && !isSummarizing) {
+                  e.currentTarget.style.backgroundColor = 'rgb(51, 229, 234)';
+                }
+              }}
+            >
+              {isSummarizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5" />
+                  {t.viewAnalysis}
+                </>
+              )}
+            </button>
+          )}
           <a
             href={article.url}
             target="_blank"

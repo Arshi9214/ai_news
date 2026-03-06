@@ -1,96 +1,91 @@
 import { Language } from '../App';
 
-/**
- * Browser-native translation using built-in Translator API (Chrome 138+, Edge 143+)
- * Falls back to original text if not supported
- */
-
-interface TranslatorAPI {
-  create(options: { sourceLanguage: string; targetLanguage: string }): Promise<any>;
-  availability(): Promise<any>;
-}
-
-declare global {
-  interface Window {
-    Translator?: TranslatorAPI;
-  }
-  const Translator: TranslatorAPI | undefined;
-}
-
-/**
- * Translate text using browser's native API
- */
-export async function translateText(
-  text: string,
-  targetLanguage: Language
-): Promise<string> {
-  // Skip translation if target is English
-  if (targetLanguage === 'en' || !text) {
-    return text;
-  }
-
-  // Check if browser supports native translation
-  if (typeof Translator === 'undefined') {
-    console.log('Browser translation not supported, keeping original text');
-    return text;
-  }
-
+const translateText = async (text: string, targetLang: string): Promise<string> => {
+  if (!text) return text;
   try {
-    // Check availability for language pair
-    const availability = await Translator.availability();
-    const langPair = `en-${targetLanguage}`;
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
     
-    if (availability[langPair] !== 'available') {
-      console.log(`Translation not available for ${langPair}`);
+    if (!res.ok) {
+      console.warn('Translation API returned error:', res.status);
       return text;
     }
-
-    // Create translator
-    const translator = await Translator.create({
-      sourceLanguage: 'en',
-      targetLanguage: targetLanguage
-    });
-
-    // Translate text
-    const translated = await translator.translate(text);
-    return translated || text;
+    
+    const data = await res.json();
+    return data[0].map((item: any) => item[0]).join('');
   } catch (error) {
-    console.warn('Translation failed:', error);
+    console.error('Translation failed:', error);
     return text;
   }
-}
+};
 
-/**
- * Translate news article content
- */
-export async function translateNewsContent(
-  title: string,
-  content: string,
-  targetLanguage: Language
-): Promise<{ title: string; content: string }> {
-  if (targetLanguage === 'en') {
-    return { title, content };
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
   }
+  return chunks;
+};
 
+export const translateNewsContent = async (title: string, content: string, targetLang: Language) => {
+  if (targetLang === 'en') return { title, content };
+  
   try {
     const [translatedTitle, translatedContent] = await Promise.all([
-      translateText(title, targetLanguage),
-      translateText(content.substring(0, 500), targetLanguage) // Limit content length
+      translateText(title, targetLang),
+      translateText(content.substring(0, 1000), targetLang) // Limit to 1000 chars for speed
     ]);
-
-    return {
-      title: translatedTitle,
-      content: translatedContent
-    };
+    
+    if (translatedTitle && translatedTitle !== title) {
+      return { title: translatedTitle, content: translatedContent };
+    }
+    return { title, content };
   } catch (error) {
-    console.warn('Content translation failed:', error);
     return { title, content };
   }
-}
+};
 
-/**
- * Check if browser translation is supported
- */
-export function isTranslationSupported(): boolean {
-  return typeof Translator !== 'undefined';
-}
+export const translateArticles = async (articles: any[], targetLang: Language) => {
+  if (targetLang === 'en') return articles;
+
+  const batches = chunk(articles, 10);
+  
+  for (const batch of batches) {
+    await Promise.all(batch.map(async (article) => {
+      if (!article.translations?.[targetLang]) {
+        article.translations = article.translations || {};
+        article.translations[targetLang] = {
+          title: await translateText(article.title, targetLang),
+          summary: article.analysis?.summary ? await translateText(article.analysis.summary, targetLang) : null
+        };
+      }
+    }));
+  }
+  
+  return articles;
+};
+
+export const translatePDFs = async (pdfs: any[], targetLang: Language) => {
+  if (targetLang === 'en') return pdfs;
+
+  const batches = chunk(pdfs, 10);
+  
+  for (const batch of batches) {
+    await Promise.all(batch.map(async (pdf) => {
+      if (!pdf.translations?.[targetLang]) {
+        pdf.translations = pdf.translations || {};
+        pdf.translations[targetLang] = {
+          name: await translateText(pdf.name, targetLang),
+          summary: pdf.analysis?.summary ? await translateText(pdf.analysis.summary, targetLang) : null
+        };
+      }
+    }));
+  }
+  
+  return pdfs;
+};
+
+export const getTranslatedText = (item: any, field: string, language: Language): string => {
+  if (language === 'en') return item[field];
+  return item.translations?.[language]?.[field] || item[field];
+};

@@ -72,18 +72,24 @@ export async function generateLightweightSummary(
 
   try {
     // Try to get full article content if URL is provided
-    let fullContent = content || description;
+    let fullContent = content || description || '';
     
     if (articleUrl && articleUrl.startsWith('http')) {
       console.log('🌐 Fetching full article content...');
       const scrapedResult = await scrapeArticleContent(articleUrl);
       
-      if (scrapedResult.success && scrapedResult.content.length > fullContent.length) {
+      if (scrapedResult.success && scrapedResult.content && scrapedResult.content.length > fullContent.length) {
         fullContent = scrapedResult.content;
-        console.log(`✅ Using scraped content (${fullContent.length} chars) instead of RSS (${content.length} chars)`);
+        console.log(`✅ Using scraped content (${fullContent.length} chars) instead of RSS (${content?.length || 0} chars)`);
       } else {
         console.log('⚠️ Scraping failed or insufficient, using RSS content');
       }
+    }
+
+    // Ensure we have content to analyze
+    if (!fullContent || fullContent.length < 10) {
+      console.warn('No content available for analysis');
+      return createFallbackSummary(title, title, language);
     }
 
     // Wait for rate limit
@@ -97,7 +103,7 @@ export async function generateLightweightSummary(
     return parseGroqResponse(response);
   } catch (error) {
     console.error('Groq API error:', error);
-    return createFallbackSummary(description, content, language);
+    return createFallbackSummary(description || content || title, content || title, language);
   }
 }
 
@@ -105,16 +111,24 @@ export async function generateLightweightSummary(
  * Fetch from Groq with automatic key rotation on rate limit
  */
 async function fetchWithKeyRotation(prompt: string, languagePrompt: string): Promise<string> {
-  let attempts = 0;
-  const maxAttempts = GROQ_API_KEYS.filter(key => key !== 'YOUR_GROQ_API_KEY_1_HERE' && key !== 'YOUR_GROQ_API_KEY_2_HERE' && key !== 'YOUR_GROQ_API_KEY_3_HERE').length;
-
-  if (maxAttempts === 0) {
+  const validKeys = GROQ_API_KEYS.filter(key => 
+    key && key !== 'YOUR_GROQ_API_KEY_1_HERE' && key !== 'YOUR_GROQ_API_KEY_2_HERE' && key !== 'YOUR_GROQ_API_KEY_3_HERE'
+  );
+  
+  if (validKeys.length === 0) {
     throw new Error('No valid Groq API keys configured');
   }
 
-  while (attempts < maxAttempts) {
+  for (let attempt = 0; attempt < validKeys.length; attempt++) {
     try {
       const apiKey = getCurrentApiKey();
+      
+      // Skip invalid keys
+      if (!apiKey || apiKey.startsWith('YOUR_GROQ')) {
+        rotateApiKey();
+        continue;
+      }
+      
       const keyPreview = `...${apiKey.slice(-4)}`;
       console.log(`🤖 Using GROQ API Key ${currentKeyIndex + 1}/3 (${keyPreview})`);
       
@@ -137,17 +151,16 @@ async function fetchWithKeyRotation(prompt: string, languagePrompt: string): Pro
             }
           ],
           temperature: 0.5,
-          max_tokens: 400,
+          max_tokens: 500,
           top_p: 1
         })
       });
 
       if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
-        console.warn('Rate limit hit:', errorData);
+        console.warn(`⚠️ Key ${currentKeyIndex + 1} rate limited, rotating...`);
         rotateApiKey();
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         continue;
       }
 
@@ -158,12 +171,11 @@ async function fetchWithKeyRotation(prompt: string, languagePrompt: string): Pro
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (error) {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        throw error;
-      }
+      console.error(`❌ Key ${currentKeyIndex + 1} failed:`, error);
       rotateApiKey();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (attempt < validKeys.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
     }
   }
 
@@ -175,17 +187,17 @@ async function fetchWithKeyRotation(prompt: string, languagePrompt: string): Pro
  */
 function getLanguagePrompt(language: Language): string {
   const languageMap: Record<Language, string> = {
-    en: 'You MUST respond ONLY in English.',
-    hi: 'You MUST respond ONLY in Hindi.',
-    ta: 'You MUST respond ONLY in Tamil.',
-    bn: 'You MUST respond ONLY in Bengali.',
-    te: 'You MUST respond ONLY in Telugu.',
-    mr: 'You MUST respond ONLY in Marathi.',
-    gu: 'You MUST respond ONLY in Gujarati.',
-    kn: 'You MUST respond ONLY in Kannada.',
-    ml: 'You MUST respond ONLY in Malayalam.',
-    pa: 'You MUST respond ONLY in Punjabi.',
-    ur: 'You MUST respond ONLY in Urdu.'
+    en: 'Write ALL analysis in English.',
+    hi: 'Write ALL analysis in Hindi (हिंदी) - proper Hindi script only, no transliteration.',
+    ta: 'Write ALL analysis in Tamil (தமிழ்) - proper Tamil script only, no transliteration.',
+    bn: 'Write ALL analysis in Bengali (বাংলা) - proper Bengali script only, no transliteration.',
+    te: 'Write ALL analysis in Telugu (తెలుగు) - proper Telugu script only, no transliteration.',
+    mr: 'Write ALL analysis in Marathi (मराठी) - proper Marathi script only, no transliteration.',
+    gu: 'Write ALL analysis in Gujarati (ગુજરાતી) - proper Gujarati script only, no transliteration.',
+    kn: 'Write ALL analysis in Kannada (ಕನ್ನಡ) - proper Kannada script only, no transliteration.',
+    ml: 'Write ALL analysis in Malayalam (മലയാളം) - proper Malayalam script only, no transliteration.',
+    pa: 'Write ALL analysis in Punjabi (ਪੰਜਾਬੀ) - proper Punjabi script only, no transliteration.',
+    ur: 'Write ALL analysis in Urdu (اردو) - proper Urdu script only, no transliteration.'
   };
   return languageMap[language] || languageMap.en;
 }
@@ -199,18 +211,23 @@ function createSummaryPrompt(
   description: string,
   languagePrompt: string
 ): string {
-  // Use full content if available, otherwise fall back to description
   const text = content && content.length > 500 ? content : (description || content);
   
   return `${languagePrompt}
 
-Analyze this complete news article for exam preparation. Provide detailed, specific insights.
+Analyze this news article. Extract ONLY facts from the content.
 
 Title: ${title}
-Full Article Content: ${text.substring(0, 6000)}
+Content: ${text.substring(0, 6000)}
 
-Return ONLY valid JSON (no extra text):
-{"summary":"Comprehensive 4-5 sentence summary covering all key points, facts, and implications","keyTakeaways":["specific fact 1 with numbers/details","specific fact 2 with context","specific fact 3 with implications","exam-relevant insight"]}`;
+RULES:
+- Summary: 3-4 sentences with specific names, dates, numbers, organizations, agreements
+- NO generic statements
+- Extract concrete facts only
+- Do NOT add outside knowledge
+
+Return ONLY valid JSON:
+{"summary":"3-4 detailed sentences with specific facts","keyTakeaways":["specific fact 1","specific fact 2","specific fact 3"]}`;
 }
 
 /**
@@ -218,26 +235,63 @@ Return ONLY valid JSON (no extra text):
  */
 function parseGroqResponse(response: string): GroqSummaryResult {
   try {
-    // Clean response - remove control characters
-    let cleaned = response.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Remove HTML entities
+    let cleaned = response
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     
-    // Try to extract JSON
-    const jsonMatch = cleaned.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+    // Auto-complete truncated JSON
+    // Count quotes to close unterminated strings
+    const quoteCount = (cleaned.match(/"/g) || []).length;
+    if (quoteCount % 2 !== 0) {
+      cleaned += '"';
+    }
+    
+    // Close unterminated arrays
+    const openBrackets = (cleaned.match(/\[/g) || []).length;
+    const closeBrackets = (cleaned.match(/\]/g) || []).length;
+    if (openBrackets > closeBrackets) {
+      cleaned += ']'.repeat(openBrackets - closeBrackets);
+    }
+    
+    // Close unterminated objects
+    const openBraces = (cleaned.match(/\{/g) || []).length;
+    const closeBraces = (cleaned.match(/\}/g) || []).length;
+    if (openBraces > closeBraces) {
+      cleaned += '}'.repeat(openBraces - closeBraces);
+    }
+    
+    // Remove trailing commas
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+    
+    // Try to parse
+    const parsed = JSON.parse(cleaned);
+    if (parsed.summary && parsed.keyTakeaways) {
       return {
         summary: (parsed.summary || '').trim(),
-        keyTakeaways: (parsed.keyTakeaways || []).slice(0, 3).filter((t: string) => t && t.trim()),
+        keyTakeaways: Array.isArray(parsed.keyTakeaways) 
+          ? parsed.keyTakeaways.slice(0, 3).filter((t: string) => t && t.trim())
+          : [],
         source: 'groq'
       };
     }
   } catch (error) {
-    console.error('Error parsing Groq response:', error);
+    console.error('JSON parse failed, trying fallback extraction:', error);
   }
 
-  // Fallback parsing
+  // Fallback parsing - extract text content
   const lines = response.split('\n').filter(line => line.trim());
-  const summary = lines.find(line => !line.startsWith('-') && !line.startsWith('•') && line.length > 20) || '';
+  
+  // Find summary (longest non-bullet line)
+  const summaryLine = lines
+    .filter(line => !line.startsWith('-') && !line.startsWith('•') && line.length > 20)
+    .sort((a, b) => b.length - a.length)[0] || '';
+  
+  // Find takeaways (bullet points)
   const takeaways = lines
     .filter(line => line.startsWith('-') || line.startsWith('•'))
     .map(line => line.replace(/^[-•]\s*/, '').trim())
@@ -245,8 +299,8 @@ function parseGroqResponse(response: string): GroqSummaryResult {
     .slice(0, 3);
 
   return {
-    summary: summary.trim() || 'Summary not available',
-    keyTakeaways: takeaways.length > 0 ? takeaways : ['Key information available', 'Relevant for current affairs', 'Important for exam preparation'],
+    summary: summaryLine.trim() || response.substring(0, 300) || 'Summary not available',
+    keyTakeaways: takeaways.length > 0 ? takeaways : [],
     source: 'groq'
   };
 }

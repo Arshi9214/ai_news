@@ -17,6 +17,10 @@ app.use(express.json({ limit: '50mb' }));
 // Initialize SQLite Database
 const db = new Database(path.join(__dirname, 'newsapp.db'));
 
+// Enable WAL mode for better concurrency
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -177,6 +181,9 @@ app.post('/api/articles', authenticateToken, (req, res) => {
     const article = req.body;
     const now = new Date().toISOString();
 
+    // Handle source as object or string
+    const source = typeof article.source === 'string' ? article.source : article.source?.name || 'Unknown';
+
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO articles 
       (id, user_id, title, content, source, url, date, topics, language, bookmarked, analysis, created_at, updated_at)
@@ -188,27 +195,28 @@ app.post('/api/articles', authenticateToken, (req, res) => {
       req.user.userId,
       article.title,
       article.content,
-      article.source,
+      source,
       article.url || null,
       article.date,
       JSON.stringify(article.topics),
       article.language,
       article.bookmarked ? 1 : 0,
-      article.analysis || null,
+      article.analysis ? JSON.stringify(article.analysis) : null,
       now,
       now
     );
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to save article' });
+    console.error('Article save error:', error.message);
+    res.status(500).json({ error: 'Failed to save article', details: error.message });
   }
 });
 
 // Get articles
 app.get('/api/articles', authenticateToken, (req, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM articles WHERE user_id = ? ORDER BY date DESC LIMIT 100');
+    const stmt = db.prepare('SELECT * FROM articles WHERE user_id = ? ORDER BY date DESC');
     const articles = stmt.all(req.user.userId).map(a => ({
       ...a,
       topics: JSON.parse(a.topics),
