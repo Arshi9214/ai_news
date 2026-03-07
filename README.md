@@ -225,11 +225,12 @@ graph TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Login
-    Login --> Auth : Submit
-    Auth --> Dashboard : Success
-    Auth --> Login : Fail
-    Dashboard --> [*] : Logoutount : Submit Form
+    [*] --> Unauthenticated
+    Unauthenticated --> LoginPage : Access App
+    Unauthenticated --> SignupPage : Create Account
+    
+    LoginPage --> Authenticating : Submit Credentials
+    SignupPage --> CreatingAccount : Submit Form
     CreatingAccount --> Authenticated : Success
     CreatingAccount --> SignupPage : Error
     
