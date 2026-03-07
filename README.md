@@ -32,73 +32,285 @@ In the digital age, information overload presents a significant challenge for us
 
 ## II. SYSTEM ARCHITECTURE
 
-### A. System Block Diagram
+### A. Overall System Architecture
+
+The proposed system follows a **three-tier client-server architecture** comprising the **Presentation Layer**, **Application Layer**, and **Data Layer**. The architecture is designed to ensure **scalability**, **modularity**, and **security** while maintaining **high performance** and **cross-platform compatibility**.
 
 ```mermaid
-graph TD
-    UI["<b>User Interface</b><br/>React + TypeScript"]
-    API["<b>API Gateway</b><br/>Express.js"]
-    SERV["<b>Services</b><br/>User | Article | PDF"]
-    AI["<b>AI Engine</b><br/>Groq Llama 3.1"]
-    DB[("<b>Database</b><br/>SQLite")]
-    EXT["<b>External APIs</b><br/>RSS | CORS Proxy"]
+graph TB
+    subgraph "<b>PRESENTATION LAYER</b>"
+        UI["<b>Web Client</b><br/>React 18.3.1<br/>TypeScript 5.0<br/>Tailwind CSS 3.4.0"]
+        AUTH_UI["<b>Authentication Module</b><br/>Login/Register<br/>JWT Token Management"]
+        DASH["<b>Dashboard Module</b><br/>Statistics<br/>User Preferences"]
+        NEWS_UI["<b>News Module</b><br/>RSS Aggregation<br/>Article Display"]
+        PDF_UI["<b>PDF Module</b><br/>Upload Interface<br/>Document Viewer"]
+    end
+    
+    subgraph "<b>APPLICATION LAYER</b>"
+        API["<b>API Gateway</b><br/>Express.js 5.2.1<br/>RESTful Endpoints<br/>CORS & Rate Limiting"]
+        
+        subgraph "<b>Core Services</b>"
+            AUTH_SVC["<b>Authentication Service</b><br/>JWT Generation<br/>Password Hashing<br/>Session Management"]
+            USER_SVC["<b>User Service</b><br/>Profile Management<br/>Preferences<br/>Statistics"]
+            ARTICLE_SVC["<b>Article Service</b><br/>CRUD Operations<br/>Bookmark Management<br/>Search & Filter"]
+            PDF_SVC["<b>PDF Service</b><br/>Upload Processing<br/>Text Extraction<br/>Storage Management"]
+        end
+        
+        subgraph "<b>Integration Layer</b>"
+            RSS["<b>RSS Aggregator</b><br/>Multi-source Fetching<br/>Feed Parsing<br/>Deduplication"]
+            AI["<b>AI Analysis Engine</b><br/>Groq Llama 3.3 70B<br/>Content Summarization<br/>Key Extraction"]
+            TRANS["<b>Translation Service</b><br/>11 Languages<br/>Google Translate API<br/>Content Localization"]
+        end
+    end
+    
+    subgraph "<b>DATA LAYER</b>"
+        DB[("<b>SQLite Database</b><br/>better-sqlite3 12.6.2<br/>ACID Compliance<br/>WAL Mode")]
+        
+        subgraph "<b>Database Schema</b>"
+            USERS["<b>Users Table</b><br/>Authentication<br/>Profile Data"]
+            ARTICLES["<b>Articles Table</b><br/>Content Storage<br/>Analysis Results"]
+            PDFS["<b>PDFs Table</b><br/>Document Storage<br/>Extracted Text"]
+            PREFS["<b>Preferences Table</b><br/>User Settings<br/>Language & Topics"]
+        end
+    end
+    
+    subgraph "<b>EXTERNAL SERVICES</b>"
+        RSS_FEEDS["<b>RSS News Feeds</b><br/>Times of India<br/>The Hindu<br/>Indian Express<br/>NDTV<br/>LiveMint"]
+        GROQ_API["<b>Groq Cloud API</b><br/>LLM Processing<br/>3 API Keys<br/>Rate Limiting"]
+        TRANSLATE_API["<b>Translation API</b><br/>Google Translate<br/>Multi-language Support"]
+    end
     
     UI --> API
-    API --> SERV
-    SERV --> AI
-    SERV --> DB
-    SERV --> EXT
+    AUTH_UI --> API
+    DASH --> API
+    NEWS_UI --> API
+    PDF_UI --> API
     
-    style UI fill:#e1f5ff
-    style API fill:#fff3e0
-    style SERV fill:#f3e5f5
-    style AI fill:#e8f5e9
-    style DB fill:#fce4ec
-    style EXT fill:#fff9c4
+    API --> AUTH_SVC
+    API --> USER_SVC
+    API --> ARTICLE_SVC
+    API --> PDF_SVC
+    
+    AUTH_SVC --> DB
+    USER_SVC --> DB
+    ARTICLE_SVC --> DB
+    PDF_SVC --> DB
+    
+    ARTICLE_SVC --> RSS
+    ARTICLE_SVC --> AI
+    PDF_SVC --> AI
+    
+    RSS --> RSS_FEEDS
+    AI --> GROQ_API
+    ARTICLE_SVC --> TRANS
+    PDF_SVC --> TRANS
+    TRANS --> TRANSLATE_API
+    
+    DB --> USERS
+    DB --> ARTICLES
+    DB --> PDFS
+    DB --> PREFS
+    
+    style UI fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style API fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style DB fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    style AUTH_SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style USER_SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style ARTICLE_SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style PDF_SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style RSS fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style AI fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style TRANS fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
 ```
 
-### B. High-Level Architecture
+### B. Detailed Component Architecture
+
+The system implements a **layered architecture pattern** with clear **separation of concerns**. Each layer communicates through **well-defined interfaces** ensuring **loose coupling** and **high cohesion**.
+
+```mermaid
+graph LR
+    subgraph "<b>CLIENT TIER</b>"
+        direction TB
+        C1["<b>React Components</b><br/>• NewsAggregator<br/>• PDFProcessor<br/>• AnalysisViewer<br/>• Dashboard<br/>• UserAuth"]
+        C2["<b>State Management</b><br/>• React Hooks<br/>• Context API<br/>• Local Storage"]
+        C3["<b>API Client</b><br/>• Fetch API<br/>• JWT Interceptor<br/>• Error Handling"]
+    end
+    
+    subgraph "<b>SERVER TIER</b>"
+        direction TB
+        S1["<b>Route Handlers</b><br/>• /auth/*<br/>• /articles/*<br/>• /pdfs/*<br/>• /stats/*"]
+        S2["<b>Middleware</b><br/>• JWT Verification<br/>• CORS Handler<br/>• Body Parser<br/>• Error Handler"]
+        S3["<b>Business Logic</b><br/>• User Management<br/>• Content Processing<br/>• AI Integration<br/>• Data Validation"]
+        S4["<b>Data Access Layer</b><br/>• SQL Queries<br/>• Transaction Mgmt<br/>• Connection Pool"]
+    end
+    
+    subgraph "<b>DATABASE TIER</b>"
+        direction TB
+        D1[("<b>SQLite DB</b><br/>• Users<br/>• Articles<br/>• PDFs<br/>• Preferences")]
+        D2["<b>Indexes</b><br/>• user_id<br/>• created_at<br/>• bookmarked"]
+        D3["<b>Constraints</b><br/>• Foreign Keys<br/>• Unique Keys<br/>• NOT NULL"]
+    end
+    
+    C1 --> C2
+    C2 --> C3
+    C3 -->|HTTPS/REST| S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 -->|SQL| D1
+    D1 --> D2
+    D1 --> D3
+    
+    style C1 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style C2 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style C3 fill:#bbdefb,stroke:#1976d2,stroke-width:2px
+    style S1 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style S2 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style S3 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style S4 fill:#ffe0b2,stroke:#f57c00,stroke-width:2px
+    style D1 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style D2 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+    style D3 fill:#f8bbd0,stroke:#c2185b,stroke-width:2px
+```
+
+### C. System Block Diagram
+
+Fig. 1 illustrates the **functional block diagram** of the proposed AI-powered news summarization system. The system consists of **six major modules**: **User Interface Module**, **Authentication Module**, **Content Aggregation Module**, **AI Processing Module**, **Storage Module**, and **External Integration Module**.
 
 ```mermaid
 graph TD
-    CLIENT["<b>Client</b><br/>Web Browser"]
-    SERVER["<b>Server</b><br/>Node.js + Express"]
-    DB[("<b>Database</b><br/>SQLite")]
-    NEWS["<b>News APIs</b><br/>RSS Feeds"]
-    AI["<b>AI Service</b><br/>Groq API"]
+    subgraph "<b>INPUT LAYER</b>"
+        USER(["<b>END USER</b><br/>Web Browser<br/>Multi-device Access"])
+    end
     
-    CLIENT <-->|HTTPS| SERVER
-    SERVER --> DB
-    SERVER <-->|REST| NEWS
-    SERVER <-->|REST| AI
+    subgraph "<b>PROCESSING CORE</b>"
+        direction LR
+        
+        subgraph "<b>Module 1: Authentication</b>"
+            M1A["<b>Registration</b><br/>bcrypt Hashing<br/>Email Validation"]
+            M1B["<b>Login</b><br/>JWT Generation<br/>Session Management"]
+            M1C["<b>Authorization</b><br/>Token Verification<br/>Role-based Access"]
+        end
+        
+        subgraph "<b>Module 2: Content Aggregation</b>"
+            M2A["<b>RSS Fetcher</b><br/>10+ News Sources<br/>CORS Proxy"]
+            M2B["<b>Parser</b><br/>XML/JSON Parsing<br/>Content Extraction"]
+            M2C["<b>Filter</b><br/>Topic Classification<br/>Deduplication"]
+        end
+        
+        subgraph "<b>Module 3: AI Processing</b>"
+            M3A["<b>Preprocessor</b><br/>Text Cleaning<br/>Tokenization"]
+            M3B["<b>LLM Engine</b><br/>Groq Llama 3.3<br/>70B Parameters"]
+            M3C["<b>Postprocessor</b><br/>JSON Parsing<br/>Result Formatting"]
+        end
+        
+        subgraph "<b>Module 4: PDF Processing</b>"
+            M4A["<b>Upload Handler</b><br/>File Validation<br/>Size Check (50MB)"]
+            M4B["<b>Text Extractor</b><br/>PDF.js 4.9.155<br/>Multi-page Support"]
+            M4C["<b>Analyzer</b><br/>AI Summarization<br/>Key Extraction"]
+        end
+        
+        subgraph "<b>Module 5: Translation</b>"
+            M5A["<b>Language Detector</b><br/>Auto-detection<br/>11 Languages"]
+            M5B["<b>Translator</b><br/>Google Translate<br/>Batch Processing"]
+            M5C["<b>Cache Manager</b><br/>Translation Storage<br/>Performance Opt"]
+        end
+        
+        subgraph "<b>Module 6: Data Management</b>"
+            M6A["<b>CRUD Operations</b><br/>Create/Read<br/>Update/Delete"]
+            M6B["<b>Query Optimizer</b><br/>Indexed Queries<br/>Transaction Mgmt"]
+            M6C["<b>Backup System</b><br/>Auto-backup<br/>Data Recovery"]
+        end
+    end
     
-    style CLIENT fill:#e3f2fd
-    style SERVER fill:#fff3e0
-    style DB fill:#fce4ec
-    style NEWS fill:#e8f5e9
-    style AI fill:#f3e5f5
-```
-
-### C. Component Architecture
-
-```mermaid
-graph TD
-    UI["<b>UI Layer</b><br/>Auth | Dashboard<br/>News | PDF"]
-    CTRL["<b>Controllers</b><br/>User | Article<br/>PDF | Stats"]
-    SVC["<b>Services</b><br/>Auth | Content<br/>AI | Storage"]
-    DAO["<b>Data Access</b><br/>User | Article<br/>PDF | Prefs"]
-    DB[("<b>SQLite</b>")]
+    subgraph "<b>STORAGE LAYER</b>"
+        DB1[("<b>Users DB</b><br/>Authentication<br/>Profiles")]
+        DB2[("<b>Content DB</b><br/>Articles<br/>PDFs")]
+        DB3[("<b>Config DB</b><br/>Preferences<br/>Settings")]
+    end
     
-    UI --> CTRL
-    CTRL --> SVC
-    SVC --> DAO
-    DAO --> DB
+    subgraph "<b>EXTERNAL SERVICES</b>"
+        EXT1["<b>RSS Feeds</b><br/>News Sources"]
+        EXT2["<b>Groq API</b><br/>AI Service"]
+        EXT3["<b>Translation API</b><br/>Language Service"]
+    end
     
-    style UI fill:#e1f5ff
-    style CTRL fill:#fff3e0
-    style SVC fill:#f3e5f5
-    style DAO fill:#e8f5e9
-    style DB fill:#fce4ec
+    subgraph "<b>OUTPUT LAYER</b>"
+        OUT1["<b>Dashboard</b><br/>Statistics<br/>Overview"]
+        OUT2["<b>News Feed</b><br/>Summarized Articles<br/>Analysis"]
+        OUT3["<b>PDF Viewer</b><br/>Document Analysis<br/>Insights"]
+    end
+    
+    USER --> M1A
+    USER --> M1B
+    M1A --> M1C
+    M1B --> M1C
+    
+    M1C --> M2A
+    M1C --> M4A
+    
+    M2A --> EXT1
+    M2A --> M2B
+    M2B --> M2C
+    M2C --> M3A
+    
+    M4A --> M4B
+    M4B --> M4C
+    M4C --> M3A
+    
+    M3A --> M3B
+    M3B --> EXT2
+    M3B --> M3C
+    M3C --> M5A
+    
+    M5A --> M5B
+    M5B --> EXT3
+    M5B --> M5C
+    M5C --> M6A
+    
+    M6A --> M6B
+    M6B --> M6C
+    M6C --> DB1
+    M6C --> DB2
+    M6C --> DB3
+    
+    DB1 --> OUT1
+    DB2 --> OUT2
+    DB2 --> OUT3
+    DB3 --> OUT1
+    
+    OUT1 --> USER
+    OUT2 --> USER
+    OUT3 --> USER
+    
+    style USER fill:#4fc3f7,stroke:#01579b,stroke-width:4px
+    style M1A fill:#ce93d8,stroke:#4a148c,stroke-width:2px
+    style M1B fill:#ce93d8,stroke:#4a148c,stroke-width:2px
+    style M1C fill:#ce93d8,stroke:#4a148c,stroke-width:2px
+    style M2A fill:#a5d6a7,stroke:#1b5e20,stroke-width:2px
+    style M2B fill:#a5d6a7,stroke:#1b5e20,stroke-width:2px
+    style M2C fill:#a5d6a7,stroke:#1b5e20,stroke-width:2px
+    style M3A fill:#ffcc80,stroke:#e65100,stroke-width:2px
+    style M3B fill:#ffcc80,stroke:#e65100,stroke-width:2px
+    style M3C fill:#ffcc80,stroke:#e65100,stroke-width:2px
+    style M4A fill:#90caf9,stroke:#0d47a1,stroke-width:2px
+    style M4B fill:#90caf9,stroke:#0d47a1,stroke-width:2px
+    style M4C fill:#90caf9,stroke:#0d47a1,stroke-width:2px
+    style M5A fill:#fff59d,stroke:#f57f17,stroke-width:2px
+    style M5B fill:#fff59d,stroke:#f57f17,stroke-width:2px
+    style M5C fill:#fff59d,stroke:#f57f17,stroke-width:2px
+    style M6A fill:#ef9a9a,stroke:#b71c1c,stroke-width:2px
+    style M6B fill:#ef9a9a,stroke:#b71c1c,stroke-width:2px
+    style M6C fill:#ef9a9a,stroke:#b71c1c,stroke-width:2px
+    style DB1 fill:#f48fb1,stroke:#880e4f,stroke-width:3px
+    style DB2 fill:#f48fb1,stroke:#880e4f,stroke-width:3px
+    style DB3 fill:#f48fb1,stroke:#880e4f,stroke-width:3px
+    style EXT1 fill:#80deea,stroke:#006064,stroke-width:2px
+    style EXT2 fill:#80deea,stroke:#006064,stroke-width:2px
+    style EXT3 fill:#80deea,stroke:#006064,stroke-width:2px
+    style OUT1 fill:#c5e1a5,stroke:#33691e,stroke-width:2px
+    style OUT2 fill:#c5e1a5,stroke:#33691e,stroke-width:2px
+    style OUT3 fill:#c5e1a5,stroke:#33691e,stroke-width:2px
 ```
 
 ---
