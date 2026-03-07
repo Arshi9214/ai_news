@@ -35,157 +35,70 @@ In the digital age, information overload presents a significant challenge for us
 ### A. System Block Diagram
 
 ```mermaid
-graph TB
-    subgraph "Presentation Layer"
-        UI[User Interface<br/>React + TypeScript]
-        AUTH[Authentication Module]
-        DASH[Dashboard Module]
-        NEWS[News Aggregator Module]
-        PDF[PDF Processor Module]
-    end
+graph TD
+    UI["<b>User Interface</b><br/>React + TypeScript"]
+    API["<b>API Gateway</b><br/>Express.js"]
+    SERV["<b>Services</b><br/>User | Article | PDF"]
+    AI["<b>AI Engine</b><br/>Groq Llama 3.1"]
+    DB[("<b>Database</b><br/>SQLite")]
+    EXT["<b>External APIs</b><br/>RSS | CORS Proxy"]
     
-    subgraph "Application Layer"
-        API[RESTful API Gateway<br/>Express.js]
-        JWT[JWT Middleware]
-        ROUTE[Route Handlers]
-    end
+    UI --> API
+    API --> SERV
+    SERV --> AI
+    SERV --> DB
+    SERV --> EXT
     
-    subgraph "Business Logic Layer"
-        USERSERV[User Service]
-        ARTSERV[Article Service]
-        PDFSERV[PDF Service]
-        STATSERV[Statistics Service]
-        AIPROC[AI Processing Engine<br/>Groq Llama 3.1]
-    end
-    
-    subgraph "Data Access Layer"
-        DAO[Data Access Objects]
-        QUERY[Query Builder]
-    end
-    
-    subgraph "Data Storage Layer"
-        DB[(SQLite Database)]
-        CACHE[Local Storage Cache]
-    end
-    
-    subgraph "External Services"
-        RSS[RSS News Feeds]
-        GROQ[Groq AI API]
-        PROXY[CORS Proxy Services]
-    end
-    
-    UI --> AUTH
-    UI --> DASH
-    UI --> NEWS
-    UI --> PDF
-    
-    AUTH --> API
-    DASH --> API
-    NEWS --> API
-    PDF --> API
-    
-    API --> JWT
-    JWT --> ROUTE
-    
-    ROUTE --> USERSERV
-    ROUTE --> ARTSERV
-    ROUTE --> PDFSERV
-    ROUTE --> STATSERV
-    
-    ARTSERV --> AIPROC
-    PDFSERV --> AIPROC
-    
-    USERSERV --> DAO
-    ARTSERV --> DAO
-    PDFSERV --> DAO
-    STATSERV --> DAO
-    
-    DAO --> QUERY
-    QUERY --> DB
-    
-    UI --> CACHE
-    NEWS --> RSS
-    RSS --> PROXY
-    AIPROC --> GROQ
+    style UI fill:#e1f5ff
+    style API fill:#fff3e0
+    style SERV fill:#f3e5f5
+    style AI fill:#e8f5e9
+    style DB fill:#fce4ec
+    style EXT fill:#fff9c4
 ```
 
-### B. High-Level Architecture Diagram
+### B. High-Level Architecture
 
 ```mermaid
-graph LR
-    subgraph "Client Tier"
-        WEB[Web Browser<br/>Desktop/Mobile]
-        UI[React Application]
-    end
+graph TD
+    CLIENT["<b>Client</b><br/>Web Browser"]
+    SERVER["<b>Server</b><br/>Node.js + Express"]
+    DB[("<b>Database</b><br/>SQLite")]
+    NEWS["<b>News APIs</b><br/>RSS Feeds"]
+    AI["<b>AI Service</b><br/>Groq API"]
     
-    subgraph "Application Tier"
-        SERVER[Node.js Server]
-        EXPRESS[Express.js Framework]
-        MIDDLEWARE[Authentication & Validation]
-    end
+    CLIENT <-->|HTTPS| SERVER
+    SERVER --> DB
+    SERVER <-->|REST| NEWS
+    SERVER <-->|REST| AI
     
-    subgraph "Data Tier"
-        DATABASE[(SQLite Database)]
-        FILES[File Storage]
-    end
-    
-    subgraph "External APIs"
-        NEWS_API[News RSS Feeds]
-        AI_API[Groq AI Service]
-    end
-    
-    WEB --> UI
-    UI <-->|HTTP/HTTPS| SERVER
-    SERVER --> EXPRESS
-    EXPRESS --> MIDDLEWARE
-    MIDDLEWARE --> DATABASE
-    MIDDLEWARE --> FILES
-    SERVER <-->|REST API| NEWS_API
-    SERVER <-->|REST API| AI_API
+    style CLIENT fill:#e3f2fd
+    style SERVER fill:#fff3e0
+    style DB fill:#fce4ec
+    style NEWS fill:#e8f5e9
+    style AI fill:#f3e5f5
 ```
 
-### C. Component Block Diagram
+### C. Component Architecture
 
 ```mermaid
-block-beta
-    columns 4
+graph TD
+    UI["<b>UI Layer</b><br/>Auth | Dashboard<br/>News | PDF"]
+    CTRL["<b>Controllers</b><br/>User | Article<br/>PDF | Stats"]
+    SVC["<b>Services</b><br/>Auth | Content<br/>AI | Storage"]
+    DAO["<b>Data Access</b><br/>User | Article<br/>PDF | Prefs"]
+    DB[("<b>SQLite</b>")]
     
-    block:presentation["Presentation Layer"]:4
-        AUTH_UI["Authentication UI"]
-        DASH_UI["Dashboard UI"]
-        NEWS_UI["News Feed UI"]
-        PDF_UI["PDF Processor UI"]
-    end
+    UI --> CTRL
+    CTRL --> SVC
+    SVC --> DAO
+    DAO --> DB
     
-    block:business["Business Logic Layer"]:4
-        USER_CTRL["User Controller"]
-        ARTICLE_CTRL["Article Controller"]
-        PDF_CTRL["PDF Controller"]
-        STATS_CTRL["Statistics Controller"]
-    end
-    
-    block:service["Service Layer"]:4
-        AUTH_SVC["Auth Service"]
-        CONTENT_SVC["Content Service"]
-        AI_SVC["AI Service"]
-        STORAGE_SVC["Storage Service"]
-    end
-    
-    block:data["Data Access Layer"]:4
-        USER_DAO["User DAO"]
-        ARTICLE_DAO["Article DAO"]
-        PDF_DAO["PDF DAO"]
-        PREF_DAO["Preferences DAO"]
-    end
-    
-    block:database["Database Layer"]:4
-        DB[("SQLite Database")]
-    end
-    
-    presentation --> business
-    business --> service
-    service --> data
-    data --> database
+    style UI fill:#e1f5ff
+    style CTRL fill:#fff3e0
+    style SVC fill:#f3e5f5
+    style DAO fill:#e8f5e9
+    style DB fill:#fce4ec
 ```
 
 ---
@@ -196,143 +109,67 @@ block-beta
 
 ```mermaid
 erDiagram
-    USERS ||--o{ ARTICLES : "creates"
-    USERS ||--o{ PDFS : "uploads"
-    USERS ||--|| PREFERENCES : "has"
-    ARTICLES }o--|| TOPICS : "categorized_by"
-    PDFS }o--|| ANALYSIS : "contains"
-    ARTICLES }o--|| ANALYSIS : "contains"
+    USERS ||--o{ ARTICLES : creates
+    USERS ||--o{ PDFS : uploads
+    USERS ||--|| PREFERENCES : has
     
     USERS {
-        string id PK "UUID"
-        string name UK "Unique username"
-        string email UK "Unique email"
-        string password "Bcrypt hashed"
-        datetime created_at "Registration timestamp"
-        datetime last_login "Last access time"
+        string id PK
+        string name UK
+        string email UK
+        string password
+        datetime created_at
     }
     
     ARTICLES {
-        string id PK "UUID"
-        string user_id FK "Owner reference"
-        string title "Article headline"
-        text content "Full article text"
-        string source "News source name"
-        string url "Original article URL"
-        datetime date "Publication date"
-        json topics "Topic categories"
-        string language "Content language"
-        boolean bookmarked "Bookmark status"
-        json analysis "AI analysis result"
-        datetime created_at "Creation timestamp"
-        datetime updated_at "Last modified"
+        string id PK
+        string user_id FK
+        string title
+        text content
+        string source
+        json analysis
+        boolean bookmarked
     }
     
     PDFS {
-        string id PK "UUID"
-        string user_id FK "Owner reference"
-        string name "PDF filename"
-        text content "Extracted text"
-        datetime upload_date "Upload timestamp"
-        integer page_count "Number of pages"
-        boolean bookmarked "Bookmark status"
-        json analysis "AI analysis result"
-        datetime created_at "Creation timestamp"
-        datetime updated_at "Last modified"
+        string id PK
+        string user_id FK
+        string name
+        text content
+        json analysis
+        boolean bookmarked
     }
     
     PREFERENCES {
-        integer id PK "Auto increment"
-        string user_id FK "User reference"
-        string language "UI language"
-        json selected_topics "Topic filters"
-        string theme_mode "UI theme"
-        string analysis_depth "AI detail level"
-        datetime last_sync "Sync timestamp"
-    }
-    
-    TOPICS {
-        string id PK "Topic identifier"
-        string name "Topic name"
-        string category "Topic category"
-    }
-    
-    ANALYSIS {
-        string id PK "Analysis ID"
-        text summary "Content summary"
-        json key_takeaways "Important points"
-        string exam_relevance "Exam importance"
-        json related_topics "Related categories"
+        integer id PK
+        string user_id FK
+        string language
+        json topics
+        string theme
     }
 ```
 
-### B. Database Schema Diagram
+### B. Database Schema
 
-```mermaid
-classDiagram
-    class Users {
-        +String id
-        +String name
-        +String email
-        +String password
-        +DateTime created_at
-        +DateTime last_login
-        +createUser()
-        +authenticate()
-        +updateLastLogin()
-    }
-    
-    class Articles {
-        +String id
-        +String user_id
-        +String title
-        +Text content
-        +String source
-        +String url
-        +DateTime date
-        +JSON topics
-        +String language
-        +Boolean bookmarked
-        +JSON analysis
-        +DateTime created_at
-        +DateTime updated_at
-        +saveArticle()
-        +toggleBookmark()
-        +getByUser()
-    }
-    
-    class PDFs {
-        +String id
-        +String user_id
-        +String name
-        +Text content
-        +DateTime upload_date
-        +Integer page_count
-        +Boolean bookmarked
-        +JSON analysis
-        +DateTime created_at
-        +DateTime updated_at
-        +uploadPDF()
-        +extractText()
-        +toggleBookmark()
-    }
-    
-    class Preferences {
-        +Integer id
-        +String user_id
-        +String language
-        +JSON selected_topics
-        +String theme_mode
-        +String analysis_depth
-        +DateTime last_sync
-        +updatePreferences()
-        +syncSettings()
-    }
-    
-    Users "1" --> "0..*" Articles : owns
-    Users "1" --> "0..*" PDFs : uploads
-    Users "1" --> "1" Preferences : has
-```
+**Table: Users**
+- id (PK), name (UK), email (UK), password
+- created_at, last_login
+- Methods: createUser(), authenticate()
+
+**Table: Articles**
+- id (PK), user_id (FK), title, content, source
+- url, date, topics (JSON), language, bookmarked
+- analysis (JSON), created_at, updated_at
+
+**Table: PDFs**
+- id (PK), user_id (FK), name, content
+- upload_date, page_count, bookmarked
+- analysis (JSON), created_at, updated_at
+
+**Table: Preferences**
+- id (PK), user_id (FK), language
+- selected_topics (JSON), theme_mode
+- analysis_depth, last_sync
 
 ---
 
@@ -341,149 +178,58 @@ classDiagram
 ### A. Level 0 DFD (Context Diagram)
 
 ```mermaid
-flowchart TB
-    USER((User))
-    ADMIN((Admin))
+graph LR
+    U((User))
+    S[System]
+    R[RSS]
+    A[AI]
     
-    SYSTEM[AI News Summarization System]
-    
-    RSS[RSS News Feeds]
-    AI[Groq AI Service]
-    
-    USER -->|Login Credentials| SYSTEM
-    USER -->|News Preferences| SYSTEM
-    USER -->|PDF Upload| SYSTEM
-    USER -->|Bookmark Actions| SYSTEM
-    
-    SYSTEM -->|Summarized News| USER
-    SYSTEM -->|PDF Analysis| USER
-    SYSTEM -->|User Statistics| USER
-    
-    ADMIN -->|Admin Credentials| SYSTEM
-    SYSTEM -->|User Management| ADMIN
-    SYSTEM -->|System Statistics| ADMIN
-    
-    SYSTEM -->|Fetch News| RSS
-    RSS -->|News Articles| SYSTEM
-    
-    SYSTEM -->|Content for Analysis| AI
-    AI -->|AI Analysis Results| SYSTEM
+    U -->|Input| S
+    S -->|Output| U
+    S <-->|Data| R
+    S <-->|Analysis| A
 ```
 
 ### B. Level 1 DFD (System Processes)
 
 ```mermaid
-flowchart TB
-    USER((User))
+graph TD
+    U((User))
+    P1[Auth]
+    P2[News]
+    P3[AI]
+    P4[Content]
+    DB[(DB)]
     
-    subgraph "AI News System"
-        P1[1.0<br/>User Authentication]
-        P2[2.0<br/>News Aggregation]
-        P3[3.0<br/>AI Analysis]
-        P4[4.0<br/>Content Management]
-        P5[5.0<br/>PDF Processing]
-        
-        D1[(Users DB)]
-        D2[(Articles DB)]
-        D3[(PDFs DB)]
-        D4[(Preferences DB)]
-    end
-    
-    RSS[RSS Feeds]
-    AI[Groq AI]
-    
-    USER -->|Credentials| P1
-    P1 -->|Auth Token| USER
-    P1 <-->|User Data| D1
-    
-    USER -->|Fetch Request| P2
-    P2 -->|News Request| RSS
-    RSS -->|Raw Articles| P2
-    P2 -->|Articles| P3
-    P3 -->|Analysis Request| AI
-    AI -->|Analysis Result| P3
-    P3 -->|Analyzed Content| P4
-    P4 <-->|Store/Retrieve| D2
-    P4 -->|Summarized News| USER
-    
-    USER -->|Upload PDF| P5
-    P5 -->|Extract Text| P3
-    P3 -->|PDF Analysis| P5
-    P5 <-->|Store/Retrieve| D3
-    P5 -->|Analysis Result| USER
-    
-    USER -->|Preferences| P4
-    P4 <-->|Settings| D4
+    U --> P1
+    U --> P2
+    P2 --> P3
+    P3 --> P4
+    P4 --> DB
+    P4 --> U
 ```
 
-### C. Level 2 DFD (Detailed Process Flow)
+### C. Process Flow
 
-```mermaid
-flowchart TB
-    USER((User))
-    
-    subgraph "2.0 News Aggregation Process"
-        P21[2.1<br/>Fetch RSS Feeds]
-        P22[2.2<br/>Parse XML/JSON]
-        P23[2.3<br/>Filter by Topics]
-        P24[2.4<br/>Deduplicate]
-    end
-    
-    subgraph "3.0 AI Analysis Process"
-        P31[3.1<br/>Prepare Content]
-        P32[3.2<br/>Call AI API]
-        P33[3.3<br/>Parse Response]
-        P34[3.4<br/>Extract Insights]
-    end
-    
-    subgraph "4.0 Content Management"
-        P41[4.1<br/>Save Content]
-        P42[4.2<br/>Update Bookmarks]
-        P43[4.3<br/>Search Content]
-        P44[4.4<br/>Retrieve Content]
-    end
-    
-    RSS[RSS Sources]
-    AI[Groq AI]
-    D2[(Articles DB)]
-    
-    USER -->|Request News| P21
-    P21 -->|Fetch| RSS
-    RSS -->|Raw Data| P22
-    P22 -->|Parsed Articles| P23
-    P23 -->|Filtered Articles| P24
-    P24 -->|Clean Articles| P31
-    
-    P31 -->|Formatted Content| P32
-    P32 <-->|API Call| AI
-    P32 -->|AI Response| P33
-    P33 -->|Structured Data| P34
-    P34 -->|Analysis| P41
-    
-    P41 -->|Store| D2
-    USER -->|Bookmark| P42
-    P42 <-->|Update| D2
-    USER -->|Search Query| P43
-    P43 <-->|Query| D2
-    P44 <-->|Retrieve| D2
-    P44 -->|Results| USER
-```
+**News Aggregation:** Fetch RSS → Parse → Filter → Deduplicate
+
+**AI Analysis:** Prepare → Call API → Parse → Extract Insights
+
+**Content Management:** Save → Bookmark → Search → Retrieve
 
 ---
 
 ## V. STATE TRANSITION DIAGRAMS
 
-### A. User Authentication State Diagram
+### A. User Authentication States
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Unauthenticated
-    
-    Unauthenticated --> LoginPage : Access App
-    LoginPage --> Authenticating : Submit Credentials
-    LoginPage --> SignupPage : Click Signup
-    
-    SignupPage --> CreatingAccount : Submit Form
+    [*] --> Login
+    Login --> Auth : Submit
+    Auth --> Dashboard : Success
+    Auth --> Login : Fail
+    Dashboard --> [*] : Logoutount : Submit Form
     CreatingAccount --> Authenticated : Success
     CreatingAccount --> SignupPage : Error
     
@@ -589,32 +335,13 @@ stateDiagram-v2
     SaveError --> [*] : Error Handled
 ```
 
-### D. Bookmark Management State Diagram
+### D. Bookmark Management
 
 ```mermaid
 stateDiagram-v2
     [*] --> Unbookmarked
-    
-    Unbookmarked --> TogglingBookmark : User Clicks Bookmark
-    TogglingBookmark --> UpdatingUI : Optimistic Update
-    UpdatingUI --> CallingAPI : Send Request
-    
-    CallingAPI --> VerifyingUpdate : API Success
-    CallingAPI --> ReversingUI : API Error
-    
-    VerifyingUpdate --> Bookmarked : Confirmed
-    ReversingUI --> Unbookmarked : Rollback
-    
-    Bookmarked --> TogglingUnbookmark : User Clicks Unbookmark
-    TogglingUnbookmark --> UpdatingUI2 : Optimistic Update
-    UpdatingUI2 --> CallingAPI2 : Send Request
-    
-    CallingAPI2 --> VerifyingUpdate2 : API Success
-    CallingAPI2 --> ReversingUI2 : API Error
-    
-    VerifyingUpdate2 --> Unbookmarked : Confirmed
-    ReversingUI2 --> Bookmarked : Rollback
-    
+    Unbookmarked --> Bookmarked : Toggle
+    Bookmarked --> Unbookmarked : Toggle
     Unbookmarked --> [*]
     Bookmarked --> [*]
 ```
@@ -623,97 +350,44 @@ stateDiagram-v2
 
 ## VI. SEQUENCE DIAGRAMS
 
-### A. User Registration Sequence
+### A. User Registration
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as Frontend
-    participant API as Backend API
-    participant Auth as Auth Service
-    participant DB as Database
-    
-    User->>UI: Enter Registration Details
-    UI->>UI: Validate Input
-    UI->>API: POST /api/auth/register
-    API->>Auth: Create User Request
-    Auth->>Auth: Hash Password (bcrypt)
-    Auth->>DB: Check Username Exists
-    DB-->>Auth: Username Available
-    Auth->>DB: INSERT User Record
-    DB-->>Auth: User Created
-    Auth->>Auth: Generate JWT Token
-    Auth-->>API: User + Token
-    API-->>UI: 200 OK + Token
-    UI->>UI: Store Token in localStorage
-    UI->>UI: Redirect to Dashboard
-    UI-->>User: Registration Success
+    User->>UI: Register
+    UI->>API: POST /auth/register
+    API->>DB: Create User
+    DB-->>API: Success
+    API-->>UI: JWT Token
+    UI-->>User: Dashboard
 ```
 
-### B. News Fetching and Analysis Sequence
+### B. News Fetching
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as Frontend
-    participant API as Backend API
-    participant RSS as RSS Feeds
-    participant AI as Groq AI
-    participant DB as Database
-    
-    User->>UI: Click Fetch News
-    UI->>API: GET /api/articles
-    API->>DB: Query Existing Articles
-    DB-->>API: Cached Articles
-    API-->>UI: Return Cached Data
-    
-    UI->>RSS: Fetch RSS Feeds
-    RSS-->>UI: XML/JSON Response
-    UI->>UI: Parse Feed Data
-    UI->>UI: Filter by Topics
-    
-    loop For Each New Article
-        UI->>AI: POST Analyze Content
-        AI-->>UI: Analysis Result
-        UI->>API: POST /api/articles
-        API->>DB: INSERT Article
-        DB-->>API: Success
-        API-->>UI: 200 OK
-    end
-    
-    UI->>UI: Update Article List
-    UI-->>User: Display News Feed
+    User->>UI: Fetch News
+    UI->>RSS: Get Feeds
+    RSS-->>UI: Articles
+    UI->>AI: Analyze
+    AI-->>UI: Summary
+    UI->>API: Save
+    API->>DB: Store
+    UI-->>User: Display
 ```
 
-### C. PDF Upload and Processing Sequence
+### C. PDF Processing
 
 ```mermaid
 sequenceDiagram
-    actor User
-    participant UI as Frontend
-    participant Parser as PDF Parser
-    participant API as Backend API
-    participant AI as Groq AI
-    participant DB as Database
-    
-    User->>UI: Select PDF File
-    UI->>UI: Validate File Type
-    UI->>Parser: Load PDF
-    Parser->>Parser: Extract Text
-    Parser-->>UI: Extracted Content
-    
-    UI->>AI: POST Analyze PDF Content
-    AI->>AI: Process with LLM
-    AI-->>UI: Analysis Result
-    
-    UI->>API: POST /api/pdfs
-    API->>API: Validate JWT Token
-    API->>DB: INSERT PDF Record
-    DB-->>API: PDF Saved
-    API-->>UI: 200 OK
-    
-    UI->>UI: Update PDF List
-    UI-->>User: Show Analysis
+    User->>UI: Upload PDF
+    UI->>Parser: Extract
+    Parser-->>UI: Text
+    UI->>AI: Analyze
+    AI-->>UI: Summary
+    UI->>API: Save
+    API->>DB: Store
+    UI-->>User: Display
 ```
 
 ---
